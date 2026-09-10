@@ -1,4 +1,5 @@
 import { getAuth, getSettings } from '../common/storage';
+import { t } from '../common/i18n';
 import { resolveSiteBase } from '../common/types';
 
 export class ApiError extends Error {
@@ -49,7 +50,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   };
   const toError = () =>
     new ApiError(
-      data.error || `请求失败 (${res.status})`,
+      data.error || t('requestFailed', { status: res.status }),
       res.status,
       data.code,
       data.subscribe_url,

@@ -3,6 +3,7 @@ import { fetchAccount } from '../api/account';
 import { ApiError } from '../api/client';
 import { translateSegments } from '../api/translate';
 import type { BgTranslateRequest, BgTranslateResponse, PageStatusPayload, RuntimeMessage } from '../common/messages';
+import { t } from '../common/i18n';
 import { clearAuth, getAuth, getSettings, saveSettings } from '../common/storage';
 import { LIMITS, buildSubscribeUrl } from '../common/types';
 
@@ -52,14 +53,14 @@ async function translateInChunks(
 async function sendToTab<T>(message: RuntimeMessage): Promise<T> {
   const tab = await activeTab();
   if (!tab?.id) {
-    throw new Error('当前页面无法翻译。');
+    throw new Error(t('pageNotTranslatable'));
   }
   if (isRestrictedUrl(tab.url)) {
     return {
       status: 'UNTRANSLATED',
       progress: 0,
       translatable: false,
-      error: '当前页面无法翻译。',
+      error: t('pageNotTranslatable'),
     } as T;
   }
 
@@ -92,6 +93,7 @@ async function sendToTab<T>(message: RuntimeMessage): Promise<T> {
 
 chrome.runtime.onMessage.addListener((message: RuntimeMessage | BgTranslateRequest, _sender, sendResponse) => {
   const run = async () => {
+    await getSettings();
     if (message.type === 'BG_TRANSLATE') {
       const req = message as BgTranslateRequest;
       try {
@@ -99,7 +101,7 @@ chrome.runtime.onMessage.addListener((message: RuntimeMessage | BgTranslateReque
         if (!auth?.accessToken) {
           const payload: BgTranslateResponse = {
             ok: false,
-            error: '请先登录 HxxBot',
+            error: t('loginFirst'),
             errorCode: 'UNAUTHENTICATED',
           };
           return payload;
@@ -109,7 +111,7 @@ chrome.runtime.onMessage.addListener((message: RuntimeMessage | BgTranslateReque
         const err = e as ApiError;
         const payload: BgTranslateResponse = {
           ok: false,
-          error: err.message || '翻译失败，请稍后重试',
+          error: err.message || t('translateFailed'),
           errorCode:
             err.code ||
             (err.status === 401 ? 'UNAUTHENTICATED' : err.status === 402 ? 'INSUFFICIENT_QUOTA' : 'FAILED'),
@@ -143,7 +145,8 @@ chrome.runtime.onMessage.addListener((message: RuntimeMessage | BgTranslateReque
             }
             if (
               message.patch.showFloatingPanel !== undefined ||
-              message.patch.floatingPanelTop !== undefined
+              message.patch.floatingPanelTop !== undefined ||
+              message.patch.uiLanguage !== undefined
             ) {
               await chrome.tabs.sendMessage(tab.id, { type: 'SYNC_FLOATING_PANEL' });
             }
@@ -186,7 +189,7 @@ chrome.runtime.onMessage.addListener((message: RuntimeMessage | BgTranslateReque
       default: {
         const type = (message as { type?: string })?.type ?? '(empty)';
         console.warn('[HxxTranslate] unknown message:', type, message);
-        return { error: `扩展消息未识别（${type}）。请到 chrome://extensions 重新加载本扩展后重试。` };
+        return { error: t('unknownMessage', { type }) };
       }
     }
   };

@@ -1,3 +1,4 @@
+import { normalizeUiLanguage, setUiLanguage } from './i18n';
 import {
   DEFAULT_SETTINGS,
   type AuthState,
@@ -5,17 +6,26 @@ import {
   type ExtensionSettings,
 } from './types';
 
-const SETTINGS_KEY = 'hxxtranslate.settings';
+export const SETTINGS_KEY = 'hxxtranslate.settings';
 const AUTH_KEY = 'hxxtranslate.auth';
+
+function withUiLanguage(settings: ExtensionSettings): ExtensionSettings {
+  const next = { ...settings, uiLanguage: normalizeUiLanguage(settings.uiLanguage) };
+  setUiLanguage(next.uiLanguage);
+  return next;
+}
 
 export async function getSettings(): Promise<ExtensionSettings> {
   const data = await chrome.storage.local.get(SETTINGS_KEY);
-  return { ...DEFAULT_SETTINGS, ...(data[SETTINGS_KEY] as Partial<ExtensionSettings> | undefined) };
+  return withUiLanguage({
+    ...DEFAULT_SETTINGS,
+    ...(data[SETTINGS_KEY] as Partial<ExtensionSettings> | undefined),
+  });
 }
 
 export async function saveSettings(patch: Partial<ExtensionSettings>): Promise<ExtensionSettings> {
   const current = await getSettings();
-  const next = { ...current, ...patch };
+  const next = withUiLanguage({ ...current, ...patch });
   await chrome.storage.local.set({ [SETTINGS_KEY]: next });
   return next;
 }

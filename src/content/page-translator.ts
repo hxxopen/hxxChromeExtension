@@ -1,3 +1,4 @@
+import { t } from '../common/i18n';
 import type { DisplayMode, PageTranslateStatus } from '../common/types';
 import type { BgTranslateResponse } from '../common/messages';
 import {
@@ -149,7 +150,7 @@ async function runTranslate(
     for (const batch of batches) {
       const res = await requestTranslate('auto', targetLang, batch);
       if (!res?.ok) {
-        state.error = res?.error || '翻译失败，请稍后重试';
+        state.error = res?.error || t('translateFailed');
         state.errorCode = res?.errorCode;
         state.traceId = res?.traceId;
         state.providerCode = res?.providerCode;
@@ -236,8 +237,7 @@ async function translateWithMode(
   if (!blocks.length) {
     state.status = 'UNTRANSLATED';
     state.progress = 0;
-    state.error =
-      translateMode === 'selection' ? '没有可翻译的选中内容或首段。' : '当前页面没有可翻译内容。';
+    state.error = translateMode === 'selection' ? t('noSelectionOrFirst') : t('noTranslatableContent');
     hideProgress();
     return getState();
   }

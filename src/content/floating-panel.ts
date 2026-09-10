@@ -1,3 +1,4 @@
+import { t } from '../common/i18n';
 import { getSettings, saveSettings } from '../common/storage';
 import type { ExtensionSettings } from '../common/types';
 import { getState, isTranslating, restoreOriginal, translatePage, translateSelection } from './page-translator';
@@ -22,7 +23,7 @@ function applyTop(el: HTMLElement, pct: number): void {
 async function runAction(action: 'page' | 'selection' | 'restore'): Promise<void> {
   if (isTranslating() && action !== 'restore') return;
   const settings = await getSettings();
-  updateStatus('翻译中…');
+  updateStatus(t('translating'));
   try {
     let result;
     if (action === 'page') {
@@ -39,12 +40,12 @@ async function runAction(action: 'page' | 'selection' | 'restore'): Promise<void
       if (result.traceId) bits.push(`trace=${result.traceId}`);
       updateStatus(bits.join(' '));
     } else if (action === 'restore') {
-      updateStatus('已恢复原文');
+      updateStatus(t('restored'));
     } else {
-      updateStatus(action === 'selection' ? '选区/首段已翻译' : '整页已翻译');
+      updateStatus(action === 'selection' ? t('selectionTranslated') : t('pageTranslated'));
     }
   } catch (e) {
-    updateStatus((e as Error).message || '操作失败');
+    updateStatus((e as Error).message || t('actionFailed'));
   }
   refreshButtons();
 }
@@ -67,8 +68,23 @@ function refreshButtons(): void {
   });
   const selHint = fabRoot?.querySelector('.hxx-fab-selhint') as HTMLElement | null;
   if (selHint) {
-    selHint.textContent = state.hasSelection ? '将翻译选中内容' : '无选区时翻译第一段';
+    selHint.textContent = state.hasSelection ? t('willTranslateSelection') : t('noSelectionFirstParagraph');
   }
+}
+
+function applyLocale(root: HTMLElement): void {
+  const tab = root.querySelector('.hxx-fab-tab') as HTMLElement | null;
+  if (tab) tab.textContent = t('fabTab');
+  const handle = root.querySelector('.hxx-fab-handle') as HTMLElement | null;
+  if (handle) handle.title = t('fabDrag');
+  const pageBtn = root.querySelector('[data-hxx-action="page"]');
+  if (pageBtn) pageBtn.textContent = t('translatePageShort');
+  const selBtn = root.querySelector('[data-hxx-action="selection"]');
+  if (selBtn) selBtn.textContent = t('translateSelectionShort');
+  const restoreBtn = root.querySelector('[data-hxx-action="restore"]');
+  if (restoreBtn) restoreBtn.textContent = t('restoreOriginal');
+  const optionsBtn = root.querySelector('[data-hxx-action="options"]');
+  if (optionsBtn) optionsBtn.textContent = t('settings');
 }
 
 function buildFab(settings: ExtensionSettings): HTMLElement {
@@ -78,15 +94,15 @@ function buildFab(settings: ExtensionSettings): HTMLElement {
   applyTop(root, settings.floatingPanelTop ?? 40);
 
   root.innerHTML = `
-    <div class="hxx-fab-tab" title="HxxTranslate">译</div>
+    <div class="hxx-fab-tab" title="HxxTranslate">${t('fabTab')}</div>
     <div class="hxx-fab-panel">
-      <div class="hxx-fab-handle" title="拖动调整位置">⋮⋮</div>
+      <div class="hxx-fab-handle" title="${t('fabDrag')}">⋮⋮</div>
       <div class="hxx-fab-title">HxxTranslate</div>
-      <p class="hxx-fab-selhint">无选区时翻译第一段</p>
-      <button type="button" class="hxx-fab-btn primary" data-hxx-action="page">翻译整页</button>
-      <button type="button" class="hxx-fab-btn" data-hxx-action="selection">翻译选中/首段</button>
-      <button type="button" class="hxx-fab-btn" data-hxx-action="restore">恢复原文</button>
-      <button type="button" class="hxx-fab-link" data-hxx-action="options">设置</button>
+      <p class="hxx-fab-selhint">${t('noSelectionFirstParagraph')}</p>
+      <button type="button" class="hxx-fab-btn primary" data-hxx-action="page">${t('translatePageShort')}</button>
+      <button type="button" class="hxx-fab-btn" data-hxx-action="selection">${t('translateSelectionShort')}</button>
+      <button type="button" class="hxx-fab-btn" data-hxx-action="restore">${t('restoreOriginal')}</button>
+      <button type="button" class="hxx-fab-link" data-hxx-action="options">${t('settings')}</button>
       <div class="hxx-fab-status"></div>
     </div>
   `;
@@ -300,6 +316,8 @@ export async function mountFloatingPanel(): Promise<void> {
   injectStyles();
   if (fabRoot) {
     applyTop(fabRoot, settings.floatingPanelTop ?? 40);
+    applyLocale(fabRoot);
+    refreshButtons();
     return;
   }
   fabRoot = buildFab(settings);
@@ -326,7 +344,11 @@ function isRestricted(): boolean {
 export async function syncFloatingPanelFromSettings(settings: ExtensionSettings): Promise<void> {
   if (settings.showFloatingPanel) {
     if (!fabRoot) await mountFloatingPanel();
-    else applyTop(fabRoot, settings.floatingPanelTop ?? 40);
+    else {
+      applyTop(fabRoot, settings.floatingPanelTop ?? 40);
+      applyLocale(fabRoot);
+      refreshButtons();
+    }
   } else {
     unmountFloatingPanel();
   }

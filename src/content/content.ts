@@ -1,5 +1,6 @@
 import type { RuntimeMessage } from '../common/messages';
-import { getSettings } from '../common/storage';
+import { t } from '../common/i18n';
+import { SETTINGS_KEY, getSettings } from '../common/storage';
 import { applyDisplayMode, ensureStyles, isRestrictedPage } from './dom-manager';
 import { mountFloatingPanel, syncFloatingPanelFromSettings } from './floating-panel';
 import {
@@ -68,16 +69,16 @@ g.__hxxTranslateHandle = (message, sendResponse) => {
 
   if (message.type === 'TRANSLATE_PAGE' || message.type === 'TRANSLATE_SELECTION') {
     void (async () => {
+      const settings = await getSettings();
       if (!translatable()) {
         respond({
           status: 'UNTRANSLATED',
           progress: 0,
           translatable: false,
-          error: '当前页面无法翻译。',
+          error: t('pageNotTranslatable'),
         });
         return;
       }
-      const settings = await getSettings();
       const result =
         message.type === 'TRANSLATE_SELECTION'
           ? await translateSelection(settings.targetLanguage, settings.displayMode)
@@ -100,6 +101,15 @@ if (!g.__hxxTranslateListening) {
     const handle = g.__hxxTranslateHandle;
     if (!handle) return false;
     return handle(message, sendResponse);
+  });
+
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local' || !changes[SETTINGS_KEY]) return;
+    void (async () => {
+      if (!translatable()) return;
+      const settings = await getSettings();
+      await syncFloatingPanelFromSettings(settings);
+    })();
   });
 }
 

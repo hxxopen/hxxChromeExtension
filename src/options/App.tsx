@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react';
-import type { AccountInfo, DisplayMode, ExtensionSettings } from '../common/types';
+import type { AccountInfo, DisplayMode, ExtensionSettings, UiLanguage } from '../common/types';
 import { OFFICIAL_API_BASE, TARGET_LANGUAGES } from '../common/types';
+import { dateLocale, setUiLanguage, t, UI_LANGUAGES } from '../common/i18n';
 
 type AuthState = { accessToken: string; userId: string; email: string } | null;
 
@@ -8,10 +9,10 @@ async function send<T>(msg: unknown): Promise<T> {
   return chrome.runtime.sendMessage(msg) as Promise<T>;
 }
 
-function formatDate(value?: string): string {
+function formatDate(value: string | undefined, locale: UiLanguage): string {
   if (!value) return '—';
   const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString();
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString(dateLocale(locale));
 }
 
 export default function App() {
@@ -23,6 +24,7 @@ export default function App() {
 
   const load = useCallback(async () => {
     const s = await send<ExtensionSettings>({ type: 'GET_SETTINGS' });
+    setUiLanguage(s.uiLanguage);
     const a = await send<AuthState>({ type: 'GET_AUTH' });
     setSettings(s);
     setAuth(a);
@@ -33,7 +35,7 @@ export default function App() {
         setError(null);
       } catch (e) {
         setAccount(null);
-        setError((e as Error).message || '无法加载账户信息');
+        setError((e as Error).message || t('cannotLoadAccount'));
       }
     } else {
       setAccount(null);
@@ -44,8 +46,16 @@ export default function App() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    if (!settings) return;
+    setUiLanguage(settings.uiLanguage);
+    document.documentElement.lang = settings.uiLanguage === 'zh-CN' ? 'zh-CN' : 'en';
+    document.title = t('settingsTitle');
+  }, [settings]);
+
   const patch = async (p: Partial<ExtensionSettings>) => {
     const next = await send<ExtensionSettings>({ type: 'SAVE_SETTINGS', patch: p });
+    setUiLanguage(next.uiLanguage);
     setSettings(next);
   };
 
@@ -56,7 +66,7 @@ export default function App() {
       await send({ type: 'LOGIN' });
       await load();
     } catch (e) {
-      setError((e as Error).message || '登录失败');
+      setError((e as Error).message || t('loginFailed'));
     } finally {
       setBusy(false);
     }
@@ -68,18 +78,36 @@ export default function App() {
     setAccount(null);
   };
 
-  if (!settings) return <div style={{ padding: 24 }}>加载中…</div>;
+  if (!settings) return <div style={{ padding: 24 }}>{t('loading')}</div>;
 
   const ent = account?.entitlement;
   const remain = ent?.quota_remain ?? 0;
+  const locale = settings.uiLanguage;
 
   return (
     <div style={{ maxWidth: 560, margin: '0 auto', padding: '32px 20px 48px' }}>
-      <h1 style={{ fontSize: 22, margin: '0 0 24px' }}>HxxTranslate 设置</h1>
+      <h1 style={{ fontSize: 22, margin: '0 0 24px' }}>{t('settingsTitle')}</h1>
 
       <section style={card}>
-        <h2 style={h2}>翻译设置</h2>
-        <label style={label}>默认目标语言</label>
+        <h2 style={h2}>{t('uiLanguage')}</h2>
+        <select
+          value={settings.uiLanguage}
+          onChange={(e) => void patch({ uiLanguage: e.target.value as UiLanguage })}
+          style={input}
+          aria-label={t('uiLanguage')}
+        >
+          {UI_LANGUAGES.map((lang) => (
+            <option key={lang.code} value={lang.code}>
+              {lang.label}
+            </option>
+          ))}
+        </select>
+        <p style={{ margin: '8px 0 0', fontSize: 12, color: '#64748b' }}>{t('uiLanguageHint')}</p>
+      </section>
+
+      <section style={card}>
+        <h2 style={h2}>{t('translateSettings')}</h2>
+        <label style={label}>{t('defaultTargetLanguage')}</label>
         <select
           value={settings.targetLanguage}
           onChange={(e) => void patch({ targetLanguage: e.target.value })}
@@ -92,14 +120,14 @@ export default function App() {
           ))}
         </select>
 
-        <div style={{ marginTop: 16, fontSize: 13, color: '#475569' }}>翻译显示</div>
+        <div style={{ marginTop: 16, fontSize: 13, color: '#475569' }}>{t('translationDisplay')}</div>
         <label style={radio}>
           <input
             type="radio"
             checked={settings.displayMode === 'translation'}
             onChange={() => void patch({ displayMode: 'translation' satisfies DisplayMode })}
           />
-          仅显示译文
+          {t('translationOnly')}
         </label>
         <label style={radio}>
           <input
@@ -107,68 +135,64 @@ export default function App() {
             checked={settings.displayMode === 'bilingual'}
             onChange={() => void patch({ displayMode: 'bilingual' satisfies DisplayMode })}
           />
-          原文 + 译文
+          {t('bilingual')}
         </label>
       </section>
 
       <section style={card}>
-        <h2 style={h2}>自动翻译</h2>
+        <h2 style={h2}>{t('autoTranslate')}</h2>
         <label style={radio}>
           <input
             type="checkbox"
             checked={settings.autoTranslate}
             onChange={(e) => void patch({ autoTranslate: e.target.checked })}
           />
-          打开网页后自动翻译整页
+          {t('autoTranslatePage')}
         </label>
       </section>
 
       <section style={card}>
-        <h2 style={h2}>页面控制条</h2>
+        <h2 style={h2}>{t('floatingPanel')}</h2>
         <label style={radio}>
           <input
             type="checkbox"
             checked={settings.showFloatingPanel !== false}
             onChange={(e) => void patch({ showFloatingPanel: e.target.checked })}
           />
-          显示右侧悬浮控制条（鼠标靠近展开，可上下拖动）
+          {t('showFloatingPanel')}
         </label>
-        <p style={{ margin: '8px 0 0', fontSize: 12, color: '#64748b' }}>
-          可在页面右侧直接点「翻译整页 / 选中首段」，无需反复打开扩展弹窗。
-        </p>
+        <p style={{ margin: '8px 0 0', fontSize: 12, color: '#64748b' }}>{t('floatingPanelHint')}</p>
       </section>
 
       <section style={card}>
-        <h2 style={h2}>账户</h2>
+        <h2 style={h2}>{t('account')}</h2>
         {auth?.accessToken && account ? (
           <>
             <p style={{ margin: '0 0 8px' }}>{account.user.email || auth.email}</p>
-            <p style={{ margin: '0 0 8px', fontSize: 12, color: '#64748b' }}>
-              HxxBot 账号，订阅与额度记在该账户中
+            <p style={{ margin: '0 0 8px', fontSize: 12, color: '#64748b' }}>{t('accountNote')}</p>
+            <p style={{ margin: '0 0 4px', fontSize: 14 }}>
+              {t('currentPlan', { name: ent?.product_name || t('freePlan') })}
             </p>
             <p style={{ margin: '0 0 4px', fontSize: 14 }}>
-              当前套餐：{ent?.product_name || '免费版'}
+              {t('validUntil', { date: formatDate(ent?.period_end, locale) })}
             </p>
-            <p style={{ margin: '0 0 4px', fontSize: 14 }}>有效期：{formatDate(ent?.period_end)}</p>
             <p style={{ margin: '0 0 16px', fontSize: 14 }}>
-              剩余翻译额度：{remain.toLocaleString()}
+              {t('remainingQuota', { remain: remain.toLocaleString(dateLocale(locale)) })}
             </p>
             <div style={{ display: 'flex', gap: 8 }}>
               <button type="button" style={primary} onClick={() => void send({ type: 'OPEN_SUBSCRIBE' })}>
-                在 HxxBot 会员中心订阅
+                {t('subscribeInHxxBot')}
               </button>
               <button type="button" style={ghost} onClick={() => void onLogout()}>
-                退出登录
+                {t('logout')}
               </button>
             </div>
           </>
         ) : (
           <>
-            <p style={{ fontSize: 14, color: '#475569' }}>
-              使用已有 HxxBot 账号登录。无需单独注册，订阅与翻译额度都记在该账号上。
-            </p>
+            <p style={{ fontSize: 14, color: '#475569' }}>{t('loginHint')}</p>
             <button type="button" style={primary} disabled={busy} onClick={() => void onLogin()}>
-              {busy ? '登录中…' : '登录 HxxBot'}
+              {busy ? t('loggingIn') : t('loginHxxBot')}
             </button>
           </>
         )}
@@ -176,7 +200,7 @@ export default function App() {
       </section>
 
       <section style={card}>
-        <h2 style={h2}>服务地址</h2>
+        <h2 style={h2}>{t('serviceAddress')}</h2>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <input
             value={settings.apiBase}
@@ -189,13 +213,13 @@ export default function App() {
             onClick={() => void patch({ apiBase: OFFICIAL_API_BASE, siteBase: '' })}
             title={OFFICIAL_API_BASE}
           >
-            官方服务器
+            {t('officialServer')}
           </button>
         </div>
       </section>
 
       <section style={card}>
-        <h2 style={h2}>关于</h2>
+        <h2 style={h2}>{t('about')}</h2>
         <p style={{ margin: 0 }}>HxxTranslate</p>
         <p style={{ margin: '4px 0 0', color: '#64748b' }}>Version 1.0.0</p>
       </section>

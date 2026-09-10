@@ -1,4 +1,4 @@
-import type { DisplayMode, PageTranslateStatus } from './types';
+import type { DisplayMode, ExtensionSettings, PageTranslateStatus } from './types';
 
 export type RuntimeMessage =
   | { type: 'GET_PAGE_STATUS' }
@@ -8,7 +8,7 @@ export type RuntimeMessage =
   | { type: 'SET_DISPLAY_MODE'; mode: DisplayMode }
   | { type: 'SYNC_FLOATING_PANEL' }
   | { type: 'GET_SETTINGS' }
-  | { type: 'SAVE_SETTINGS'; patch: Record<string, unknown> }
+  | { type: 'SAVE_SETTINGS'; patch: Partial<ExtensionSettings> }
   | { type: 'LOGIN' }
   | { type: 'LOGOUT' }
   | { type: 'GET_ACCOUNT' }

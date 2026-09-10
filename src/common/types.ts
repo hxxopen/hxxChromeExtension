@@ -1,11 +1,16 @@
 export type DisplayMode = 'translation' | 'bilingual';
 
+/** Extension UI language (not the translation target). */
+export type UiLanguage = 'en' | 'zh-CN';
+
 export type PageTranslateStatus = 'UNTRANSLATED' | 'TRANSLATING' | 'TRANSLATED' | 'RESTORING';
 
 export type ExtensionSettings = {
   targetLanguage: string;
   displayMode: DisplayMode;
   autoTranslate: boolean;
+  /** Interface language; persisted in chrome.storage.local */
+  uiLanguage: UiLanguage;
   /** API 根地址（翻译/账户接口） */
   apiBase: string;
   /**
@@ -78,6 +83,7 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
   targetLanguage: 'zh-CN',
   displayMode: 'translation',
   autoTranslate: false,
+  uiLanguage: 'en',
   apiBase: OFFICIAL_API_BASE,
   siteBase: '',
   showFloatingPanel: true,

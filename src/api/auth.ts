@@ -1,4 +1,5 @@
 import { CLIENT_ID } from '../common/types';
+import { t } from '../common/i18n';
 import { apiFetch } from './client';
 import { fetchAccount } from './account';
 import { getSettings, saveAuth } from '../common/storage';
@@ -27,14 +28,14 @@ export async function loginWithHxxBot(): Promise<void> {
     interactive: true,
   });
   if (!redirected) {
-    throw new Error('登录已取消');
+    throw new Error(t('loginCancelled'));
   }
 
   const result = new URL(redirected);
   const code = result.searchParams.get('code');
   const state = result.searchParams.get('state') || init.state;
   if (!code) {
-    throw new Error('未获取到授权码');
+    throw new Error(t('noAuthCode'));
   }
 
   const tokenRes = await apiFetch<{ token: string }>('/api/auth/desktop/token', {

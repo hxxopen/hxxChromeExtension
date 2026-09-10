@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react';
-import type { DisplayMode, ExtensionSettings } from '../common/types';
+import type { DisplayMode, ExtensionSettings, UiLanguage } from '../common/types';
 import { TARGET_LANGUAGES } from '../common/types';
 import type { PageStatusPayload } from '../common/messages';
+import { setUiLanguage, t, UI_LANGUAGES } from '../common/i18n';
 
 type AuthState = { accessToken: string; userId: string; email: string } | null;
 
@@ -28,8 +29,9 @@ export default function App() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    const [s, a, status] = await Promise.all([
-      send<ExtensionSettings>({ type: 'GET_SETTINGS' }),
+    const s = await send<ExtensionSettings>({ type: 'GET_SETTINGS' });
+    setUiLanguage(s.uiLanguage);
+    const [a, status] = await Promise.all([
       send<AuthState>({ type: 'GET_AUTH' }),
       send<PageStatusPayload>({ type: 'GET_PAGE_STATUS' }).catch(
         () =>
@@ -37,7 +39,7 @@ export default function App() {
             status: 'UNTRANSLATED',
             progress: 0,
             translatable: false,
-            error: '当前页面无法翻译。',
+            error: t('pageNotTranslatable'),
           }) satisfies PageStatusPayload,
       ),
     ]);
@@ -50,17 +52,25 @@ export default function App() {
     void refresh();
   }, [refresh]);
 
+  useEffect(() => {
+    if (!settings) return;
+    setUiLanguage(settings.uiLanguage);
+    document.documentElement.lang = settings.uiLanguage === 'zh-CN' ? 'zh-CN' : 'en';
+  }, [settings]);
+
   const patchSettings = async (patch: Partial<ExtensionSettings>) => {
     const next = await send<ExtensionSettings>({ type: 'SAVE_SETTINGS', patch });
+    setUiLanguage(next.uiLanguage);
     setSettings(next);
+    if (patch.uiLanguage) setNotice(null);
   };
 
   const handleResult = (status: PageStatusPayload & { error?: string }) => {
     setPage(status);
     if (status.errorCode === 'UNAUTHENTICATED') {
-      setNotice(formatErrorNotice('请先登录 HxxBot', status));
+      setNotice(formatErrorNotice(t('loginFirst'), status));
     } else if (status.errorCode === 'INSUFFICIENT_QUOTA') {
-      setNotice(formatErrorNotice('翻译额度不足', status));
+      setNotice(formatErrorNotice(t('insufficientQuota'), status));
     } else if (status.error) {
       setNotice(formatErrorNotice(status.error, status));
     }
@@ -106,14 +116,14 @@ export default function App() {
       }
       setAuth(next);
     } catch (e) {
-      setNotice((e as Error).message || '登录失败');
+      setNotice((e as Error).message || t('loginFailed'));
     } finally {
       setBusy(false);
     }
   };
 
   if (!settings) {
-    return <div style={{ padding: 20 }}>加载中…</div>;
+    return <div style={{ padding: 20 }}>{t('loading')}</div>;
   }
 
   const translating = page?.status === 'TRANSLATING' || busy;
@@ -132,13 +142,32 @@ export default function App() {
           style={{ borderRadius: 5, display: 'block' }}
         />
         <strong style={{ fontSize: 18 }}>HxxTranslate</strong>
+        <select
+          value={settings.uiLanguage}
+          aria-label={t('uiLanguage')}
+          onChange={(e) => void patchSettings({ uiLanguage: e.target.value as UiLanguage })}
+          style={{
+            marginLeft: 'auto',
+            padding: '4px 6px',
+            borderRadius: 6,
+            border: '1px solid #cbd5e1',
+            background: '#fff',
+            fontSize: 12,
+          }}
+        >
+          {UI_LANGUAGES.map((lang) => (
+            <option key={lang.code} value={lang.code}>
+              {lang.label}
+            </option>
+          ))}
+        </select>
       </header>
 
       {blocked ? (
-        <p style={{ color: '#b45309', fontSize: 13 }}>当前页面无法翻译。</p>
+        <p style={{ color: '#b45309', fontSize: 13 }}>{t('pageNotTranslatable')}</p>
       ) : (
         <>
-          <label style={{ display: 'block', fontSize: 13, color: '#475569', marginBottom: 6 }}>翻译为</label>
+          <label style={{ display: 'block', fontSize: 13, color: '#475569', marginBottom: 6 }}>{t('translateTo')}</label>
           <select
             value={settings.targetLanguage}
             onChange={(e) => void patchSettings({ targetLanguage: e.target.value })}
@@ -165,8 +194,8 @@ export default function App() {
             style={primaryBtn(translating)}
           >
             {translating && page?.status === 'TRANSLATING'
-              ? `翻译中… ${page?.progress || 0}%`
-              : '翻译当前网页'}
+              ? t('translatingProgress', { progress: page?.progress || 0 })
+              : t('translatePage')}
           </button>
 
           <button
@@ -175,15 +204,13 @@ export default function App() {
             onClick={() => void onTranslateSelection()}
             style={{ ...secondaryBtn(translating), marginTop: 8 }}
           >
-            {hasSelection ? '翻译选中内容' : '翻译选中 / 首段'}
+            {hasSelection ? t('translateSelection') : t('translateSelectionOrFirst')}
           </button>
           <p style={{ margin: '6px 0 0', fontSize: 11, color: '#64748b' }}>
-            {hasSelection
-              ? '将只翻译当前选区（过长会分批）'
-              : '未检测到选区时译第一段；打开弹窗可能清掉高亮，请先选中再点，或用页面右侧「译」面板'}
+            {hasSelection ? t('selectionHintHas') : t('selectionHintNone')}
           </p>
 
-          <div style={{ margin: '16px 0 8px', fontSize: 13, color: '#475569' }}>显示方式</div>
+          <div style={{ margin: '16px 0 8px', fontSize: 13, color: '#475569' }}>{t('displayMode')}</div>
           <label style={radioStyle}>
             <input
               type="radio"
@@ -191,7 +218,7 @@ export default function App() {
               checked={settings.displayMode === 'translation'}
               onChange={() => void patchSettings({ displayMode: 'translation' satisfies DisplayMode })}
             />
-            仅显示译文
+            {t('translationOnly')}
           </label>
           <label style={radioStyle}>
             <input
@@ -200,11 +227,11 @@ export default function App() {
               checked={settings.displayMode === 'bilingual'}
               onChange={() => void patchSettings({ displayMode: 'bilingual' satisfies DisplayMode })}
             />
-            原文 + 译文
+            {t('bilingual')}
           </label>
 
           <button type="button" disabled={!translated || busy} onClick={() => void onRestore()} style={secondaryBtn(!translated)}>
-            恢复原文
+            {t('restoreOriginal')}
           </button>
         </>
       )}
@@ -212,18 +239,18 @@ export default function App() {
       {notice ? (
         <div style={{ marginTop: 12, fontSize: 13, color: '#b91c1c' }}>
           <div>{notice}</div>
-          {notice.includes('登录') ? (
+          {page?.errorCode === 'UNAUTHENTICATED' ? (
             <button type="button" onClick={() => void onLogin()} style={{ ...linkBtn, marginTop: 6 }}>
-              登录
+              {t('login')}
             </button>
           ) : null}
-          {notice.includes('额度') ? (
+          {page?.errorCode === 'INSUFFICIENT_QUOTA' ? (
             <button
               type="button"
               onClick={() => void send({ type: 'OPEN_SUBSCRIBE' })}
               style={{ ...linkBtn, marginTop: 6 }}
             >
-              去 HxxBot 订阅
+              {t('subscribeHxxBot')}
             </button>
           ) : null}
         </div>
@@ -232,17 +259,17 @@ export default function App() {
       <hr style={{ border: 0, borderTop: '1px solid #e2e8f0', margin: '18px 0 12px' }} />
       {!auth?.accessToken ? (
         <button type="button" disabled={busy} onClick={() => void onLogin()} style={{ ...linkBtn, marginBottom: 10 }}>
-          登录 HxxBot 账号
+          {t('loginHxxBotAccount')}
         </button>
       ) : (
-        <div style={{ fontSize: 12, color: '#64748b', marginBottom: 10 }}>{auth.email || '已登录'}</div>
+        <div style={{ fontSize: 12, color: '#64748b', marginBottom: 10 }}>{auth.email || t('loggedIn')}</div>
       )}
       <button
         type="button"
         onClick={() => chrome.runtime.openOptionsPage()}
         style={{ ...linkBtn, display: 'flex', alignItems: 'center', gap: 6 }}
       >
-        ⚙ 设置
+        ⚙ {t('settings')}
       </button>
     </div>
   );
