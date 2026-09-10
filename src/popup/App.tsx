@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import type { DisplayMode, ExtensionSettings, UiLanguage } from '../common/types';
 import { TARGET_LANGUAGES } from '../common/types';
-import type { PageStatusPayload } from '../common/messages';
+import type { PageStatusPayload, RuntimeMessage } from '../common/messages';
 import { setUiLanguage, t, UI_LANGUAGES } from '../common/i18n';
 
 type AuthState = { accessToken: string; userId: string; email: string } | null;
@@ -51,6 +51,24 @@ export default function App() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    const onMessage = (message: RuntimeMessage) => {
+      if (message.type !== 'PAGE_STATUS_CHANGED') return;
+      setPage(message);
+      if (message.errorCode === 'UNAUTHENTICATED') {
+        setNotice(formatErrorNotice(t('loginFirst'), message));
+      } else if (message.errorCode === 'INSUFFICIENT_QUOTA') {
+        setNotice(formatErrorNotice(t('insufficientQuota'), message));
+      } else if (message.error) {
+        setNotice(formatErrorNotice(message.error, message));
+      } else {
+        setNotice(null);
+      }
+    };
+    chrome.runtime.onMessage.addListener(onMessage);
+    return () => chrome.runtime.onMessage.removeListener(onMessage);
+  }, []);
 
   useEffect(() => {
     if (!settings) return;

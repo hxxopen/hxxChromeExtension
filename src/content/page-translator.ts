@@ -66,6 +66,17 @@ export function getState(): PageState {
   return { ...state, hasSelection: hasMeaningfulSelection() };
 }
 
+type PageStateListener = (state: PageState) => void;
+let stateListener: PageStateListener | null = null;
+
+export function onPageStateChange(listener: PageStateListener): void {
+  stateListener = listener;
+}
+
+function emitState(): void {
+  stateListener?.(getState());
+}
+
 export function setMode(mode: DisplayMode): void {
   lastMode = mode;
   applyDisplayMode(mode);
@@ -126,6 +137,7 @@ async function runTranslate(
 ): Promise<void> {
   if (!blocks.length) return;
   translating = true;
+  emitState();
   const units = blocks
     .map((el) => {
       const id = el.dataset.hxxId || String(++seq);
@@ -144,7 +156,10 @@ async function runTranslate(
     batches.reduce((n, b) => n + b.length, 0),
     1,
   );
-  if (resetProgress) showProgress(0);
+  if (resetProgress) {
+    showProgress(0);
+    emitState();
+  }
 
   try {
     for (const batch of batches) {
@@ -177,9 +192,11 @@ async function runTranslate(
       state.progress = pct;
       showProgress(pct);
       applyDisplayMode(mode);
+      emitState();
     }
   } finally {
     translating = false;
+    if (!resetProgress) emitState();
   }
 }
 
@@ -216,6 +233,7 @@ async function translateWithMode(
   lastTargetLang = targetLang;
   lastMode = mode;
   applyDisplayMode(mode);
+  emitState();
 
   let blocks: HTMLElement[];
   let selectionOnly: boolean;
@@ -239,6 +257,7 @@ async function translateWithMode(
     state.progress = 0;
     state.error = translateMode === 'selection' ? t('noSelectionOrFirst') : t('noTranslatableContent');
     hideProgress();
+    emitState();
     return getState();
   }
 
@@ -257,6 +276,7 @@ async function translateWithMode(
     state.providerCode = err.providerCode;
     hideProgress();
   }
+  emitState();
   return getState();
 }
 
@@ -271,6 +291,7 @@ export function restoreOriginal(): PageState {
   state.errorCode = undefined;
   state.selectionOnly = false;
   state.hasSelection = hasMeaningfulSelection();
+  emitState();
   return getState();
 }
 

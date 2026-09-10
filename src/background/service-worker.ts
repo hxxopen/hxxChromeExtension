@@ -65,17 +65,6 @@ async function sendToTab<T>(message: RuntimeMessage): Promise<T> {
   }
 
   const tabId = tab.id;
-  // 翻译前热更新内容脚本，避免页面仍跑旧逻辑
-  if (message.type === 'TRANSLATE_PAGE' || message.type === 'TRANSLATE_SELECTION') {
-    try {
-      await chrome.scripting.executeScript({
-        target: { tabId },
-        files: ['content.js'],
-      });
-    } catch {
-      /* restricted or inject failed; fall through to sendMessage */
-    }
-  }
   try {
     return (await chrome.tabs.sendMessage(tabId, message)) as T;
   } catch (err) {
@@ -93,6 +82,9 @@ async function sendToTab<T>(message: RuntimeMessage): Promise<T> {
 
 chrome.runtime.onMessage.addListener((message: RuntimeMessage | BgTranslateRequest, _sender, sendResponse) => {
   const run = async () => {
+    if (message.type === 'PAGE_STATUS_CHANGED') {
+      return { ok: true };
+    }
     await getSettings();
     if (message.type === 'BG_TRANSLATE') {
       const req = message as BgTranslateRequest;

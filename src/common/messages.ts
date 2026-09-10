@@ -15,7 +15,8 @@ export type RuntimeMessage =
   | { type: 'GET_AUTH' }
   | { type: 'OPEN_SUBSCRIBE' }
   | { type: 'OPEN_OPTIONS' }
-  | { type: 'CHECK_TAB_TRANSLATABLE' };
+  | { type: 'CHECK_TAB_TRANSLATABLE' }
+  | ({ type: 'PAGE_STATUS_CHANGED' } & PageStatusPayload);
 
 export type PageStatusPayload = {
   status: PageTranslateStatus;

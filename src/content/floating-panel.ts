@@ -1,7 +1,7 @@
 import { t } from '../common/i18n';
 import { getSettings, saveSettings } from '../common/storage';
 import type { ExtensionSettings } from '../common/types';
-import { getState, isTranslating, restoreOriginal, translatePage, translateSelection } from './page-translator';
+import { getState, isTranslating, restoreOriginal, translatePage, translateSelection, type PageState } from './page-translator';
 
 const FAB_ID = 'hxxtranslate-fab';
 const PANEL_TOP_KEY = 'floatingPanelTop';
@@ -11,6 +11,7 @@ let expanded = false;
 let dragging = false;
 let dragStartY = 0;
 let dragStartTop = 0;
+let prevStatus: PageState['status'] | undefined;
 
 function clampTop(pct: number): number {
   return Math.min(90, Math.max(8, pct));
@@ -23,31 +24,49 @@ function applyTop(el: HTMLElement, pct: number): void {
 async function runAction(action: 'page' | 'selection' | 'restore'): Promise<void> {
   if (isTranslating() && action !== 'restore') return;
   const settings = await getSettings();
-  updateStatus(t('translating'));
   try {
-    let result;
     if (action === 'page') {
-      result = await translatePage(settings.targetLanguage, settings.displayMode);
+      await translatePage(settings.targetLanguage, settings.displayMode);
     } else if (action === 'selection') {
-      result = await translateSelection(settings.targetLanguage, settings.displayMode);
+      await translateSelection(settings.targetLanguage, settings.displayMode);
     } else {
-      result = restoreOriginal();
-    }
-    if (result.error) {
-      const bits = [result.error];
-      if (result.errorCode) bits.push(`[${result.errorCode}]`);
-      if (result.providerCode) bits.push(`provider=${result.providerCode}`);
-      if (result.traceId) bits.push(`trace=${result.traceId}`);
-      updateStatus(bits.join(' '));
-    } else if (action === 'restore') {
-      updateStatus(t('restored'));
-    } else {
-      updateStatus(action === 'selection' ? t('selectionTranslated') : t('pageTranslated'));
+      restoreOriginal();
     }
   } catch (e) {
     updateStatus((e as Error).message || t('actionFailed'));
+    refreshButtons();
   }
+}
+
+export function syncFloatingPanelState(page: PageState = getState()): void {
+  if (!fabRoot) {
+    fabRoot = document.getElementById(FAB_ID) as HTMLElement | null;
+  }
+  if (!fabRoot) return;
   refreshButtons();
+  if (page.error) {
+    const bits = [page.error];
+    if (page.errorCode) bits.push(`[${page.errorCode}]`);
+    if (page.providerCode) bits.push(`provider=${page.providerCode}`);
+    if (page.traceId) bits.push(`trace=${page.traceId}`);
+    updateStatus(bits.join(' '));
+    prevStatus = page.status;
+    return;
+  }
+  if (page.status === 'TRANSLATING') {
+    updateStatus(t('translatingProgress', { progress: page.progress || 0 }));
+    prevStatus = page.status;
+    return;
+  }
+  if (page.status === 'TRANSLATED') {
+    updateStatus(page.selectionOnly ? t('selectionTranslated') : t('pageTranslated'));
+    prevStatus = page.status;
+    return;
+  }
+  if (page.status === 'RESTORING' || prevStatus === 'TRANSLATED' || prevStatus === 'TRANSLATING' || prevStatus === 'RESTORING') {
+    updateStatus(t('restored'));
+  }
+  prevStatus = page.status;
 }
 
 function updateStatus(text: string): void {
@@ -317,17 +336,18 @@ export async function mountFloatingPanel(): Promise<void> {
   if (fabRoot) {
     applyTop(fabRoot, settings.floatingPanelTop ?? 40);
     applyLocale(fabRoot);
-    refreshButtons();
+    syncFloatingPanelState();
     return;
   }
   fabRoot = buildFab(settings);
   document.documentElement.appendChild(fabRoot);
-  refreshButtons();
+  syncFloatingPanelState();
 }
 
 export function unmountFloatingPanel(): void {
   fabRoot?.remove();
   fabRoot = null;
+  prevStatus = undefined;
   document.getElementById('hxxtranslate-fab-style')?.remove();
 }
 
@@ -347,7 +367,7 @@ export async function syncFloatingPanelFromSettings(settings: ExtensionSettings)
     else {
       applyTop(fabRoot, settings.floatingPanelTop ?? 40);
       applyLocale(fabRoot);
-      refreshButtons();
+      syncFloatingPanelState();
     }
   } else {
     unmountFloatingPanel();

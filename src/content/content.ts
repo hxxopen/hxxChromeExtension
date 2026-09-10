@@ -2,9 +2,10 @@ import type { RuntimeMessage } from '../common/messages';
 import { t } from '../common/i18n';
 import { SETTINGS_KEY, getSettings } from '../common/storage';
 import { applyDisplayMode, ensureStyles, isRestrictedPage } from './dom-manager';
-import { mountFloatingPanel, syncFloatingPanelFromSettings } from './floating-panel';
+import { mountFloatingPanel, syncFloatingPanelFromSettings, syncFloatingPanelState } from './floating-panel';
 import {
   getState,
+  onPageStateChange,
   restoreOriginal,
   setMode,
   translatePage,
@@ -24,6 +25,19 @@ type HxxGlobal = Window & {
 const g = window as HxxGlobal;
 
 ensureStyles();
+
+onPageStateChange((state) => {
+  syncFloatingPanelState(state);
+  void chrome.runtime
+    .sendMessage({
+      type: 'PAGE_STATUS_CHANGED',
+      ...state,
+      translatable: translatable(),
+    })
+    .catch(() => {
+      /* popup may be closed */
+    });
+});
 
 function translatable(): boolean {
   return !isRestrictedPage();
