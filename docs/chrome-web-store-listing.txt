@@ -1,0 +1,161 @@
+================================================================================
+Chrome 网上应用店文案（可直接粘贴）
+名称建议：HxxTranslate（不超过 45 个字符）
+================================================================================
+
+【短描述 / Short description】（不超过 132 个字符）
+
+中文：
+打开网页即可翻译成简体中文、英语等 16 种语言。支持整页/选区、原文对照、悬浮控制条。由 HxxBot 提供账户与翻译。
+
+English:
+Translate web pages into 16 languages. Full page or selection, bilingual view, floating toolbar. Account and translation by HxxBot.
+
+
+【详细描述 / Detailed description】（不超过 16000 个字符）
+以下中文约 2200 字，英文约 3500 字符，可按商店语言分区分别粘贴。
+请使用纯文本粘贴，不要带 Markdown 符号。
+
+--------------------------------------------------------------------------------
+中文详细描述
+--------------------------------------------------------------------------------
+
+HxxTranslate 是一款轻量级网页翻译扩展。打开外语网页，点击工具栏图标或页面右侧的「译」面板，即可把当前页面翻译成你指定的语言。
+
+它只做一件事：把网页上的可见文字翻译好，并尽量保持原来的版式。不做成复杂的 AI 助手，也不处理 PDF、图片或视频字幕。
+
+适合谁用
+• 阅读英文、日文、韩文等外语资料、文档和新闻
+• 浏览海外商品页、帮助中心、技术博客
+• 需要对照原文核对用词的学生、译者、产品和技术人员
+• 希望少打断阅读、在页面上直接操作的用户
+
+主要功能
+
+1. 整页翻译
+抽取页面可见文本，分批翻译后写回原位置，尽量不打乱现有布局。
+
+2. 选区 / 首段翻译
+选中一段文字再翻译；如果没有选区，则翻译第一段，方便先试译再决定是否整页翻译。
+
+3. 两种显示方式
+• 仅显示译文：适合快速阅读
+• 原文 + 译文：译文出现在原文附近，适合对照、核对和学习
+
+4. 一键恢复原文
+随时还原翻译前的页面，不会改动你的网站账号或表单内容。
+
+5. 页面右侧悬浮控制条
+页面右侧有可拖动的「译」面板，可翻译整页、翻译选中/首段、恢复原文或打开设置，不必反复打开扩展弹窗。弹窗与悬浮条的翻译状态会保持同步。
+
+6. 自动翻译（可选）
+可在设置中打开「打开网页后自动翻译整页」。不需要时关闭即可。
+
+7. 16 种目标语言
+简体中文、繁体中文、英语、日语、韩语、法语、德语、西班牙语、俄语、葡萄牙语、意大利语、越南语、泰语、阿拉伯语、印地语等。源语言自动检测。
+
+8. 界面语言
+扩展界面支持 English 与简体中文，默认英文。你可在弹窗或设置页切换，选择会保存在本地，下次启动继续使用。
+
+如何使用
+1. 安装扩展后，打开要阅读的网页
+2. 点击工具栏中的 HxxTranslate 图标
+3. 登录 HxxBot 账号（翻译需要额度）
+4. 选择目标语言，点击「翻译当前网页」，或使用页面右侧「译」面板
+5. 需要对照时，选择「原文 + 译文」
+6. 账户、套餐、剩余额度、自动翻译等，请到设置页查看
+
+账号、订阅与额度
+HxxTranslate 本身不维护独立的用户系统和支付。登录、套餐、剩余翻译额度由 HxxBot（https://www.hxxbot.com）提供。使用已有 HxxBot 账号即可，无需再注册一套翻译专用账号。额度不足时，可在设置页进入 HxxBot 会员中心订阅。
+
+隐私与权限
+• 仅向 HxxBot 发送为翻译而抽取的文本片段，不会把整页 HTML、Cookie 或浏览历史发给其他服务器
+• storage：保存语言、显示方式、登录状态等设置
+• identity：用于 HxxBot 安全登录
+• activeTab、scripting、tabs：向当前标签页注入脚本并完成翻译
+• 主机权限仅用于 hxxbot.com（开发环境可能包含 localhost）
+
+扩展不会读取与翻译无关的浏览记录，也不会在你未发起翻译时上传页面内容。
+
+使用限制
+• chrome://、扩展商店等浏览器受限页面无法翻译
+• 当前版本不支持 PDF、图片 OCR、Office 文档、视频字幕、划词解释或 AI 对话
+• 部分动态加载、画中画或特殊结构的页面，可能无法完整覆盖全部文字
+
+官网与支持
+官网与账户：https://www.hxxbot.com
+遇到登录、额度或翻译问题，请通过 HxxBot 网站的帮助与反馈渠道联系。
+
+HxxTranslate —— 打开网页，翻译成你的语言。
+
+--------------------------------------------------------------------------------
+English detailed description
+--------------------------------------------------------------------------------
+
+HxxTranslate is a lightweight Chrome extension for translating web pages. Open a page, click the toolbar icon or the floating panel on the right, and translate the visible text into the language you choose.
+
+It is built to do one job well: translate the page in place and keep the original layout. It is not a full AI chat assistant, and it does not translate PDFs, images, or video captions.
+
+Who it is for
+• People reading news, docs, and articles in another language
+• Shoppers and professionals browsing overseas sites and help centers
+• Students, translators, and builders who need original + translation side by side
+• Anyone who wants to translate without leaving the page
+
+Features
+
+1. Full-page translation
+Visible text is collected, translated in batches, and written back into the page.
+
+2. Selection or first paragraph
+Translate the current selection. If nothing is selected, the first paragraph is translated so you can preview before converting the whole page.
+
+3. Two display modes
+• Translation only — for fast reading
+• Original + translation — for checking wording and learning
+
+4. Restore original
+One click restores the page to how it was before translation.
+
+5. Floating toolbar
+A draggable panel on the right lets you translate the page, translate the selection, restore the original, or open settings without reopening the popup. The popup and the panel stay in sync.
+
+6. Optional auto-translate
+Automatically translate pages when they open. Turn it off any time in Settings.
+
+7. 16 target languages
+Simplified Chinese, Traditional Chinese, English, Japanese, Korean, French, German, Spanish, Russian, Portuguese, Italian, Vietnamese, Thai, Arabic, Hindi, and more. Source language is detected automatically.
+
+8. Interface language
+The extension UI supports English and Simplified Chinese. English is the default. Your choice is saved locally and reused the next time you open the extension.
+
+How to use
+1. Open the webpage you want to read
+2. Click the HxxTranslate icon in the toolbar
+3. Sign in with your HxxBot account (translation uses quota)
+4. Choose a target language and click Translate this page, or use the floating panel
+5. Switch to Original + translation when you need a bilingual view
+6. Check plan, remaining quota, and auto-translate in Settings
+
+Account and quota
+HxxTranslate does not run its own user system or payments. Sign-in, plans, and remaining quota are provided by HxxBot at https://www.hxxbot.com. Use your existing HxxBot account — you do not need a separate translator login. If quota runs out, subscribe from Settings in the HxxBot member center.
+
+Privacy and permissions
+• Only extracted text snippets are sent to HxxBot for translation. Full HTML, cookies, and browsing history are not sent to other servers
+• storage: saves language, display mode, and sign-in state
+• identity: HxxBot sign-in
+• activeTab, scripting, tabs: inject and talk to the current tab to translate
+• Host permission is limited to hxxbot.com (localhost may be used in development)
+
+The extension does not read unrelated browsing history, and it does not upload page content until you start a translation.
+
+Limits
+• Restricted pages such as chrome:// and the Chrome Web Store cannot be translated
+• This version does not support PDF, image OCR, Office files, video captions, instant word lookup, or AI chat
+• Some highly dynamic or unusual layouts may not translate every line
+
+Website and support
+Website and account: https://www.hxxbot.com
+For sign-in, quota, or translation issues, use the help and feedback channels on the HxxBot website.
+
+HxxTranslate — open a page, read it in your language.
