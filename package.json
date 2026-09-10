@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite build --watch",
     "build": "tsc --noEmit && vite build && vite build --config vite.sw.config.ts && vite build --config vite.content.config.ts",
+    "pack": "npm run build && node scripts/pack.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
