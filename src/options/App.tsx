@@ -221,7 +221,7 @@ const input: CSSProperties = {
 };
 const radio: CSSProperties = { display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, fontSize: 14 };
 const primary: CSSProperties = {
-  background: '#0f766e',
+  background: '#1677ff',
   color: '#fff',
   border: 0,
   borderRadius: 8,

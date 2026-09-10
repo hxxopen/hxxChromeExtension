@@ -124,7 +124,13 @@ export default function App() {
   return (
     <div style={{ padding: '16px 16px 12px' }}>
       <header style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-        <span style={{ fontSize: 22 }}>🌐</span>
+        <img
+          src={chrome.runtime.getURL('icons/32.png')}
+          alt=""
+          width={22}
+          height={22}
+          style={{ borderRadius: 5, display: 'block' }}
+        />
         <strong style={{ fontSize: 18 }}>HxxTranslate</strong>
       </header>
 
@@ -256,7 +262,7 @@ function primaryBtn(disabled: boolean): CSSProperties {
     padding: '10px 12px',
     border: 0,
     borderRadius: 10,
-    background: disabled ? '#5f8f8a' : '#0f766e',
+    background: disabled ? '#7eb3f7' : '#1677ff',
     color: '#fff',
     fontWeight: 600,
     cursor: disabled ? 'default' : 'pointer',
@@ -279,7 +285,7 @@ function secondaryBtn(disabled: boolean): CSSProperties {
 const linkBtn: CSSProperties = {
   border: 0,
   background: 'transparent',
-  color: '#0f766e',
+  color: '#1677ff',
   cursor: 'pointer',
   padding: 0,
   fontSize: 14,

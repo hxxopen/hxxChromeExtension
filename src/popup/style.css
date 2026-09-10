@@ -17,3 +17,7 @@ button,
 select {
   font: inherit;
 }
+
+input[type="radio"] {
+  accent-color: #1677ff;
+}

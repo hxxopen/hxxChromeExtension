@@ -203,7 +203,7 @@ function injectStyles(): void {
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #0f766e;
+      background: #1677ff;
       color: #fff;
       border-radius: 10px 0 0 10px;
       font-size: 14px;
@@ -258,8 +258,8 @@ function injectStyles(): void {
       cursor: pointer;
     }
     #hxxtranslate-fab .hxx-fab-btn.primary {
-      background: #0f766e;
-      border-color: #0f766e;
+      background: #1677ff;
+      border-color: #1677ff;
       color: #fff;
       font-weight: 600;
     }
@@ -272,7 +272,7 @@ function injectStyles(): void {
       width: 100%;
       border: 0;
       background: transparent;
-      color: #0f766e;
+      color: #1677ff;
       font-size: 12px;
       cursor: pointer;
       padding: 4px 0;

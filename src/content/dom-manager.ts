@@ -50,7 +50,7 @@ export function ensureStyles(): void {
       z-index: 2147483646;
       right: 16px;
       bottom: 16px;
-      background: #0f766e;
+      background: #1677ff;
       color: #fff;
       font: 13px/1.4 system-ui, sans-serif;
       padding: 10px 14px;
