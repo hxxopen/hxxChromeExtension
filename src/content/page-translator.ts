@@ -11,8 +11,10 @@ import {
 import {
   applyDisplayMode,
   originalText,
+  reapplyAllReverted,
   restorePage,
   setTranslation,
+  unitHasTranslation,
   wrapBlock,
 } from './dom-manager';
 import { mergeChunkedTranslations, splitParagraphBatches } from './translation-queue';
@@ -84,13 +86,39 @@ export function setMode(mode: DisplayMode): void {
 
 function startObserver(targetLang: string, mode: DisplayMode): void {
   if (observer) observer.disconnect();
+  let reapplyTimer: number | undefined;
   observer = new MutationObserver((mutations) => {
     if (translating) return;
+
+    // Angular/React 常把叶子文案改回原文：轻量回刷译文，避免「翻了又变回英文」
+    let maybeRevert = false;
+    for (const m of mutations) {
+      if (m.type === 'characterData') {
+        maybeRevert = true;
+        break;
+      }
+      if (m.type === 'childList' && m.target instanceof HTMLElement && m.target.closest?.('.hxxtranslate-unit')) {
+        maybeRevert = true;
+        break;
+      }
+    }
+    if (maybeRevert) {
+      window.clearTimeout(reapplyTimer);
+      reapplyTimer = window.setTimeout(() => reapplyAllReverted(), 80);
+    }
+
     const added: HTMLElement[] = [];
     for (const m of mutations) {
       m.addedNodes.forEach((node) => {
         if (!(node instanceof HTMLElement)) return;
-        if (node.closest?.('.hxxtranslate-unit, #hxxtranslate-progress, #hxxtranslate-fab')) return;
+        if (
+          node.closest?.(
+            '.hxxtranslate-unit, .hxxtranslate-translation, #hxxtranslate-progress, #hxxtranslate-fab',
+          )
+        ) {
+          return;
+        }
+        if (node.classList?.contains('hxxtranslate-translation')) return;
         added.push(node);
       });
     }
@@ -99,7 +127,7 @@ function startObserver(targetLang: string, mode: DisplayMode): void {
       void translateNewNodes(added, targetLang, mode);
     }, 400);
   });
-  observer.observe(document.body, { childList: true, subtree: true });
+  observer.observe(document.body, { childList: true, subtree: true, characterData: true });
   observing = true;
 }
 
@@ -122,11 +150,7 @@ async function translateNewNodes(roots: HTMLElement[], targetLang: string, mode:
 }
 
 function filterFreshBlocks(blocks: HTMLElement[]): HTMLElement[] {
-  return blocks.filter(
-    (el) =>
-      !el.classList.contains('hxxtranslate-unit') ||
-      !el.querySelector(':scope > .hxxtranslate-translation')?.textContent,
-  );
+  return blocks.filter((el) => !el.classList.contains('hxxtranslate-unit') || !unitHasTranslation(el));
 }
 
 async function runTranslate(

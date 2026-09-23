@@ -40,9 +40,14 @@ const BLOCK_SELECTOR = [
 
 export function shouldSkipElement(el: Element): boolean {
   if (!(el instanceof HTMLElement)) return true;
-  if (el.closest('.hxxtranslate-unit, .hxxtranslate-original, .hxxtranslate-translation, #hxxtranslate-progress, #hxxtranslate-fab')) {
+  if (
+    el.closest(
+      '.hxxtranslate-unit, .hxxtranslate-original, .hxxtranslate-translation, #hxxtranslate-progress, #hxxtranslate-fab',
+    )
+  ) {
     return true;
   }
+  if (el.classList.contains('hxxtranslate-translation')) return true;
   if (SKIP_TAGS.has(el.tagName)) return true;
   if (el.closest('pre, code, script, style, textarea, svg, noscript')) return true;
   if (el.isContentEditable) return true;
