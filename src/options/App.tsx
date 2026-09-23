@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react';
-import type { AccountInfo, DisplayMode, ExtensionSettings, UiLanguage } from '../common/types';
-import { OFFICIAL_API_BASE, TARGET_LANGUAGES } from '../common/types';
+import type { AccountInfo, DisplayMode, ExtensionSettings, TtsVoiceInfo, UiLanguage } from '../common/types';
+import { OFFICIAL_API_BASE, TARGET_LANGUAGES, TTS_RATE_MAX, TTS_RATE_MIN } from '../common/types';
+import type { TtsVoicesResponse } from '../common/messages';
 import { dateLocale, setUiLanguage, t, UI_LANGUAGES } from '../common/i18n';
 
 type AuthState = { accessToken: string; userId: string; email: string } | null;
@@ -21,6 +22,8 @@ export default function App() {
   const [account, setAccount] = useState<AccountInfo | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [voices, setVoices] = useState<TtsVoiceInfo[]>([]);
+  const [ttsHint, setTtsHint] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const s = await send<ExtensionSettings>({ type: 'GET_SETTINGS' });
@@ -28,6 +31,12 @@ export default function App() {
     const a = await send<AuthState>({ type: 'GET_AUTH' });
     setSettings(s);
     setAuth(a);
+    try {
+      const vr = await send<TtsVoicesResponse>({ type: 'TTS_GET_VOICES' });
+      setVoices(vr.voices || []);
+    } catch {
+      setVoices([]);
+    }
     if (a?.accessToken) {
       try {
         const acc = await send<AccountInfo>({ type: 'GET_ACCOUNT' });
@@ -76,6 +85,21 @@ export default function App() {
     await send({ type: 'LOGOUT' });
     setAuth(null);
     setAccount(null);
+  };
+
+  const onTestVoice = async () => {
+    setTtsHint(t('ttsTesting'));
+    try {
+      const res = (await send<{ ok?: boolean; error?: string }>({ type: 'TTS_TEST_SPEAK' })) || {};
+      if (res.ok === false) {
+        setTtsHint(t('ttsTestingFailed', { error: res.error || t('ttsFailed') }));
+        return;
+      }
+      setTtsHint(t('ttsTestingPlaying'));
+      window.setTimeout(() => setTtsHint(t('ttsTestingDone')), 2500);
+    } catch (e) {
+      setTtsHint(t('ttsTestingFailed', { error: (e as Error).message || t('ttsFailed') }));
+    }
   };
 
   if (!settings) return <div style={{ padding: 24 }}>{t('loading')}</div>;
@@ -165,6 +189,81 @@ export default function App() {
       </section>
 
       <section style={card}>
+        <h2 style={h2}>{t('ttsSettings')}</h2>
+        <label style={label}>{t('ttsDefaultVoice')}</label>
+        <select
+          value={settings.ttsVoiceName || ''}
+          onChange={(e) => void patch({ ttsVoiceName: e.target.value })}
+          style={input}
+        >
+          <option value="">{t('ttsSystemDefault')}</option>
+          {voices.map((v) => (
+            <option key={v.voiceName} value={v.voiceName}>
+              {v.voiceName} ({v.lang})
+            </option>
+          ))}
+        </select>
+        {!voices.length ? (
+          <p style={{ margin: '6px 0 0', fontSize: 12, color: '#b45309' }}>{t('ttsNoVoices')}</p>
+        ) : null}
+
+        <label style={{ ...label, marginTop: 14 }}>
+          {t('ttsRate')} · {Number((settings.ttsRate ?? 1).toFixed(2))}x
+        </label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 12, color: '#94a3b8' }}>{TTS_RATE_MIN}x</span>
+          <input
+            type="range"
+            min={TTS_RATE_MIN}
+            max={TTS_RATE_MAX}
+            step={0.05}
+            value={settings.ttsRate ?? 1}
+            onChange={(e) => void patch({ ttsRate: Number(e.target.value) })}
+            style={{ flex: 1, accentColor: '#3b82f6' }}
+          />
+          <span style={{ fontSize: 12, color: '#94a3b8' }}>{TTS_RATE_MAX}x</span>
+        </div>
+
+        <label style={radio}>
+          <input
+            type="checkbox"
+            checked={settings.ttsSplitParagraphs !== false}
+            onChange={(e) => void patch({ ttsSplitParagraphs: e.target.checked })}
+          />
+          {t('ttsSplitParagraphs')}
+        </label>
+        <label style={radio}>
+          <input
+            type="checkbox"
+            checked={settings.ttsHighlight !== false}
+            onChange={(e) => void patch({ ttsHighlight: e.target.checked })}
+          />
+          {t('ttsHighlightCurrent')}
+        </label>
+        <label style={radio}>
+          <input
+            type="checkbox"
+            checked={settings.ttsAutoStopAtEnd !== false}
+            onChange={(e) => void patch({ ttsAutoStopAtEnd: e.target.checked })}
+          />
+          {t('ttsAutoStopAtEnd')}
+        </label>
+        <label style={radio}>
+          <input
+            type="checkbox"
+            checked={settings.ttsRememberVoiceRate !== false}
+            onChange={(e) => void patch({ ttsRememberVoiceRate: e.target.checked })}
+          />
+          {t('ttsRememberVoiceRate')}
+        </label>
+        <button type="button" style={{ ...primary, marginTop: 14 }} onClick={() => void onTestVoice()}>
+          {t('ttsTestVoice')}
+        </button>
+        <p style={{ margin: '8px 0 0', fontSize: 12, color: '#64748b' }}>{t('ttsTestHint')}</p>
+        {ttsHint ? <p style={{ margin: '8px 0 0', fontSize: 13, color: '#0369a1' }}>{ttsHint}</p> : null}
+      </section>
+
+      <section style={card}>
         <h2 style={h2}>{t('account')}</h2>
         {auth?.accessToken && account ? (
           <>
@@ -173,7 +272,7 @@ export default function App() {
             <p style={{ margin: '0 0 4px', fontSize: 14 }}>
               {t('currentPlan', { name: ent?.product_name || t('freePlan') })}
             </p>
-            <p style={{ margin: '0 0 4px', fontSize: 14 }}>
+            <p style={{ margin: '0 0 16px', fontSize: 14 }}>
               {t('validUntil', { date: formatDate(ent?.period_end, locale) })}
             </p>
             <p style={{ margin: '0 0 16px', fontSize: 14 }}>
@@ -221,7 +320,7 @@ export default function App() {
       <section style={card}>
         <h2 style={h2}>{t('about')}</h2>
         <p style={{ margin: 0 }}>HxxTranslate</p>
-        <p style={{ margin: '4px 0 0', color: '#64748b' }}>Version 1.0.0</p>
+        <p style={{ margin: '4px 0 0', color: '#64748b' }}>Version 1.1.0</p>
       </section>
     </div>
   );

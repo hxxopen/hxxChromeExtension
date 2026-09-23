@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HxxTranslate 迷你播放器 - 效果图</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #e5e7eb;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+    h1 {
+      text-align: center;
+      font-size: 20px;
+      color: #1f2937;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      text-align: center;
+      color: #6b7280;
+      font-size: 14px;
+      margin-bottom: 32px;
+    }
+    .page-container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+      position: relative;
+      overflow: hidden;
+      min-height: 520px;
+    }
+    .page-header {
+      background: linear-gradient(90deg, #1e3a5f, #0f766e);
+      color: #fff;
+      padding: 24px 32px;
+      font-size: 22px;
+      font-weight: 700;
+    }
+    .page-body {
+      padding: 28px 32px 120px;
+      line-height: 1.7;
+      color: #1f2937;
+      font-size: 15px;
+    }
+    .page-body h2 {
+      font-size: 18px;
+      margin-bottom: 12px;
+    }
+    .page-body p {
+      margin-bottom: 16px;
+    }
+    .translated {
+      color: #6b7280;
+      font-size: 14px;
+      margin-top: -8px;
+      margin-bottom: 16px;
+    }
+    .hxx-tts-highlight {
+      background: rgba(59, 130, 246, 0.18);
+      border-left: 3px solid #3b82f6;
+      padding: 8px 12px;
+      margin: 0 -12px 16px;
+      border-radius: 0 8px 8px 0;
+    }
+    /* 迷你播放器 */
+    .mini-player {
+      position: absolute;
+      right: 24px;
+      bottom: 24px;
+      width: 340px;
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+      border: 1px solid #e5e7eb;
+      padding: 16px;
+      z-index: 10;
+    }
+    .player-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .player-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #3b82f6;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .close-btn {
+      width: 24px; height: 24px;
+      border: none;
+      background: #f3f4f6;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      color: #6b7280;
+    }
+    .close-btn:hover { background: #e5e7eb; }
+    .current-text {
+      font-size: 13px;
+      color: #374151;
+      line-height: 1.5;
+      background: #f8fafc;
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 14px;
+      max-height: 60px;
+      overflow: hidden;
+    }
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .ctrl-btn {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      border: 1px solid #e5e7eb;
+      background: #fff;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    }
+    .ctrl-btn:hover { background: #f3f4f6; }
+    .ctrl-btn.main {
+      width: 48px; height: 48px;
+      background: #3b82f6;
+      color: #fff;
+      border: none;
+      font-size: 18px;
+    }
+    .ctrl-btn.main:hover { background: #2563eb; }
+    .speed-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      color: #6b7280;
+    }
+    .speed-row input[type="range"] {
+      flex: 1;
+      accent-color: #3b82f6;
+    }
+    .note {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 13px;
+      color: #6b7280;
+    }
+  </style>
+</head>
+<body>
+  <h1>页面内迷你播放器 + 段落高亮 效果图</h1>
+  <p class="subtitle">播放时出现，可拖动，当前段落浅蓝色高亮</p>
+
+  <div class="page-container">
+    <div class="page-header">How to Start an Online Business</div>
+    <div class="page-body">
+      <h2>1. Decide what you want to sell</h2>
+      <p class="translated">1. 决定你想卖什么</p>
+
+      <div class="hxx-tts-highlight">
+        There are three things entrepreneurs can sell online: products, services, and media.
+      </div>
+      <p class="translated">企业家可以在网上销售三种东西：产品、服务和媒体。</p>
+
+      <p>
+        Physical products are made available for consumer use. Unlike services or media, products are tangible. That is, they can be picked up, touched, and interacted with. You can sell them on Amazon, eBay, or through your own online store.
+      </p>
+      <p class="translated">
+        实体产品是供消费者使用的。与服务或媒体不同，产品是实实在在的。也就是说，它们可以被拿起、触摸和使用。你可以在亚马逊、eBay 或通过你自己的网店出售它们。
+      </p>
+
+      <p>Examples of products being sold online include:</p>
+      <p class="translated">网上销售的产品示例包括：</p>
+      <ul style="padding-left: 20px; margin-bottom: 16px;">
+        <li>Jewelry <span style="color:#6b7280; font-size:13px;">珠宝</span></li>
+        <li>Backpacks <span style="color:#6b7280; font-size:13px;">背包</span></li>
+      </ul>
+    </div>
+
+    <!-- 迷你播放器 -->
+    <div class="mini-player">
+      <div class="player-header">
+        <div class="player-title">
+          <span>🔊</span> 正在朗读 · 第 2 / 9 段
+        </div>
+        <button class="close-btn">×</button>
+      </div>
+      <div class="current-text">
+        There are three things entrepreneurs can sell online: products, services, and media.
+      </div>
+      <div class="controls">
+        <button class="ctrl-btn" title="上一段">◀</button>
+        <button class="ctrl-btn main" title="暂停">⏸</button>
+        <button class="ctrl-btn" title="下一段">▶</button>
+      </div>
+      <div class="speed-row">
+        <span>语速</span>
+        <input type="range" min="0.5" max="2" step="0.1" value="1.0">
+        <span>1.0x</span>
+      </div>
+    </div>
+  </div>
+
+  <p class="note">效果图 · 当前段落已高亮，播放器显示段数与预览文本</p>
+</body>
+</html>

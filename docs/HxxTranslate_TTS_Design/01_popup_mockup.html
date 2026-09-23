@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HxxTranslate Popup - 朗读功能效果图</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #e5e7eb;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+    .popup {
+      width: 340px;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+      padding: 20px;
+      color: #1f2937;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 18px;
+    }
+    .logo-icon {
+      width: 28px; height: 28px;
+      background: #3b82f6;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-weight: 700; font-size: 14px;
+    }
+    .lang-select {
+      border: 1px solid #e5e7eb;
+      border-radius: 9999px;
+      padding: 4px 12px;
+      font-size: 13px;
+      background: #fff;
+      cursor: pointer;
+    }
+    .section-label {
+      font-size: 13px;
+      color: #6b7280;
+      margin-bottom: 8px;
+    }
+    .select-box {
+      width: 100%;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+      margin-bottom: 16px;
+      background: #fff;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M3 4.5L6 7.5L9 4.5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+    }
+    .btn {
+      width: 100%;
+      border: none;
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      margin-bottom: 10px;
+      transition: all 0.15s;
+    }
+    .btn-primary {
+      background: #3b82f6;
+      color: #fff;
+    }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-secondary {
+      background: #fff;
+      color: #1f2937;
+      border: 1px solid #e5e7eb;
+    }
+    .btn-secondary:hover { background: #f9fafb; }
+    .btn-tts {
+      background: #f0f9ff;
+      color: #0369a1;
+      border: 1px solid #bae6fd;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-tts:hover { background: #e0f2fe; }
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 16px 0 12px;
+      color: #9ca3af;
+      font-size: 12px;
+    }
+    .divider::before, .divider::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: #e5e7eb;
+    }
+    .radio-group {
+      margin: 12px 0 16px;
+    }
+    .radio-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .radio-item input { accent-color: #3b82f6; }
+    .footer {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid #f3f4f6;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      color: #6b7280;
+    }
+    .settings-link {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: #3b82f6;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .note {
+      margin-top: 24px;
+      text-align: center;
+      font-size: 13px;
+      color: #6b7280;
+    }
+  </style>
+</head>
+<body>
+  <div>
+    <div class="popup">
+      <div class="header">
+        <div class="logo">
+          <div class="logo-icon">H</div>
+          HxxTranslate
+        </div>
+        <select class="lang-select">
+          <option>简体中文</option>
+          <option>English</option>
+        </select>
+      </div>
+
+      <div class="section-label">翻译为</div>
+      <select class="select-box">
+        <option>简体中文</option>
+        <option>繁體中文</option>
+        <option>English</option>
+      </select>
+
+      <button class="btn btn-primary">翻译当前网页</button>
+      <button class="btn btn-secondary">翻译选中 / 首段</button>
+
+      <div class="divider">朗读</div>
+
+      <button class="btn btn-tts">
+        <span>🔊</span> 朗读当前网页
+      </button>
+      <button class="btn btn-tts">
+        <span>🔊</span> 朗读选中内容
+      </button>
+
+      <div class="section-label" style="margin-top: 14px;">显示方式</div>
+      <div class="radio-group">
+        <label class="radio-item">
+          <input type="radio" name="display" /> 仅显示译文
+        </label>
+        <label class="radio-item">
+          <input type="radio" name="display" checked /> 原文 + 译文
+        </label>
+      </div>
+
+      <button class="btn btn-secondary">恢复原文</button>
+
+      <div class="footer">
+        <span>fushou3579@163.com</span>
+        <a class="settings-link">⚙ 设置</a>
+      </div>
+    </div>
+    <p class="note">效果图 · 弹窗新增「朗读」区域（与现有风格保持一致）</p>
+  </div>
+</body>
+</html>

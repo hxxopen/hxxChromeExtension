@@ -1,7 +1,20 @@
 import { t } from '../common/i18n';
+import type { TtsStatusPayload } from '../common/messages';
 import { getSettings, saveSettings } from '../common/storage';
 import type { ExtensionSettings } from '../common/types';
 import { getState, isTranslating, restoreOriginal, translatePage, translateSelection, type PageState } from './page-translator';
+import { hasMeaningfulSelection } from './text-node-parser';
+import {
+  getTtsStatus,
+  isTtsActive,
+  nextSegment,
+  pausePlayback,
+  prevSegment,
+  resumePlayback,
+  startPageTts,
+  startSelectionTts,
+  stopPlayback,
+} from './tts/controller';
 
 const FAB_ID = 'hxxtranslate-fab';
 const PANEL_TOP_KEY = 'floatingPanelTop';
@@ -12,6 +25,7 @@ let dragging = false;
 let dragStartY = 0;
 let dragStartTop = 0;
 let prevStatus: PageState['status'] | undefined;
+let lastTts: TtsStatusPayload = { status: 'idle', index: 0, total: 0 };
 
 function clampTop(pct: number): number {
   return Math.min(90, Math.max(8, pct));
@@ -34,7 +48,7 @@ async function runAction(action: 'page' | 'selection' | 'restore'): Promise<void
     }
   } catch (e) {
     updateStatus((e as Error).message || t('actionFailed'));
-    refreshButtons();
+    refreshUi();
   }
 }
 
@@ -43,7 +57,8 @@ export function syncFloatingPanelState(page: PageState = getState()): void {
     fabRoot = document.getElementById(FAB_ID) as HTMLElement | null;
   }
   if (!fabRoot) return;
-  refreshButtons();
+  refreshUi();
+  if (isTtsActive()) return;
   if (page.error) {
     const bits = [page.error];
     if (page.errorCode) bits.push(`[${page.errorCode}]`);
@@ -69,25 +84,78 @@ export function syncFloatingPanelState(page: PageState = getState()): void {
   prevStatus = page.status;
 }
 
+export function syncFloatingPanelTts(tts: TtsStatusPayload = getTtsStatus()): void {
+  lastTts = tts;
+  if (!fabRoot) {
+    fabRoot = document.getElementById(FAB_ID) as HTMLElement | null;
+  }
+  if (!fabRoot) return;
+  refreshUi();
+  if (tts.error && tts.status === 'idle') {
+    updateStatus(tts.error);
+    return;
+  }
+  if (tts.status === 'playing' || tts.status === 'paused') {
+    const current = tts.total ? tts.index + 1 : 0;
+    updateStatus(
+      t(tts.status === 'paused' ? 'ttsPaused' : 'ttsPlaying', {
+        current,
+        total: tts.total,
+      }),
+    );
+    // 播放中保持展开
+    expanded = true;
+    fabRoot.classList.add('hxx-fab-open');
+    fabRoot.classList.add('hxx-fab-tts-playing');
+  } else {
+    fabRoot.classList.remove('hxx-fab-tts-playing');
+  }
+}
+
 function updateStatus(text: string): void {
   const el = fabRoot?.querySelector('.hxx-fab-status') as HTMLElement | null;
   if (el) el.textContent = text;
 }
 
-function refreshButtons(): void {
+function refreshUi(): void {
+  if (!fabRoot) return;
   const translating = isTranslating();
   const state = getState();
-  fabRoot?.querySelectorAll<HTMLButtonElement>('[data-hxx-action]').forEach((btn) => {
+  const tts = lastTts.status !== 'idle' ? lastTts : getTtsStatus();
+  const playing = tts.status === 'playing' || tts.status === 'paused';
+
+  const translateMode = fabRoot.querySelector('.hxx-fab-mode-translate') as HTMLElement | null;
+  const playMode = fabRoot.querySelector('.hxx-fab-mode-play') as HTMLElement | null;
+  if (translateMode) translateMode.hidden = playing;
+  if (playMode) playMode.hidden = !playing;
+
+  fabRoot.querySelectorAll<HTMLButtonElement>('[data-hxx-action]').forEach((btn) => {
     const action = btn.dataset.hxxAction;
     if (action === 'restore') {
       btn.disabled = translating || state.status !== 'TRANSLATED';
-    } else {
+    } else if (action === 'tts-selection') {
+      btn.disabled = translating || playing || !hasMeaningfulSelection();
+    } else if (action?.startsWith('tts-')) {
       btn.disabled = translating;
+    } else if (action === 'page' || action === 'selection') {
+      btn.disabled = translating || playing;
     }
   });
-  const selHint = fabRoot?.querySelector('.hxx-fab-selhint') as HTMLElement | null;
-  if (selHint) {
+
+  const selHint = fabRoot.querySelector('.hxx-fab-selhint') as HTMLElement | null;
+  if (selHint && !playing) {
     selHint.textContent = state.hasSelection ? t('willTranslateSelection') : t('noSelectionFirstParagraph');
+  }
+
+  const count = fabRoot.querySelector('.hxx-fab-tts-count') as HTMLElement | null;
+  if (count && playing) {
+    count.textContent = `${tts.total ? tts.index + 1 : 0}/${tts.total}`;
+  }
+
+  const pauseBtn = fabRoot.querySelector('[data-hxx-action="tts-pause"]') as HTMLElement | null;
+  if (pauseBtn) {
+    pauseBtn.textContent = tts.status === 'paused' ? '▶' : '⏸';
+    pauseBtn.title = tts.status === 'paused' ? t('ttsResume') : t('ttsPause');
   }
 }
 
@@ -104,6 +172,21 @@ function applyLocale(root: HTMLElement): void {
   if (restoreBtn) restoreBtn.textContent = t('restoreOriginal');
   const optionsBtn = root.querySelector('[data-hxx-action="options"]');
   if (optionsBtn) optionsBtn.textContent = t('settings');
+  const ttsPage = root.querySelector('[data-hxx-action="tts-page"]');
+  if (ttsPage) {
+    ttsPage.textContent = '🔊';
+    (ttsPage as HTMLElement).title = t('ttsFabReadPage');
+  }
+  const ttsSel = root.querySelector('[data-hxx-action="tts-selection"]');
+  if (ttsSel) {
+    ttsSel.textContent = '▶';
+    (ttsSel as HTMLElement).title = t('ttsFabReadSelection');
+  }
+  const ttsOpt = root.querySelector('[data-hxx-action="tts-options"]');
+  if (ttsOpt) {
+    ttsOpt.textContent = '⚙';
+    (ttsOpt as HTMLElement).title = t('ttsFabSettings');
+  }
 }
 
 function buildFab(settings: ExtensionSettings): HTMLElement {
@@ -116,12 +199,28 @@ function buildFab(settings: ExtensionSettings): HTMLElement {
     <div class="hxx-fab-tab" title="HxxTranslate">${t('fabTab')}</div>
     <div class="hxx-fab-panel">
       <div class="hxx-fab-handle" title="${t('fabDrag')}">⋮⋮</div>
-      <div class="hxx-fab-title">HxxTranslate</div>
-      <p class="hxx-fab-selhint">${t('noSelectionFirstParagraph')}</p>
-      <button type="button" class="hxx-fab-btn primary" data-hxx-action="page">${t('translatePageShort')}</button>
-      <button type="button" class="hxx-fab-btn" data-hxx-action="selection">${t('translateSelectionShort')}</button>
-      <button type="button" class="hxx-fab-btn" data-hxx-action="restore">${t('restoreOriginal')}</button>
-      <button type="button" class="hxx-fab-link" data-hxx-action="options">${t('settings')}</button>
+      <div class="hxx-fab-mode-translate">
+        <div class="hxx-fab-title">HxxTranslate</div>
+        <p class="hxx-fab-selhint">${t('noSelectionFirstParagraph')}</p>
+        <button type="button" class="hxx-fab-btn primary" data-hxx-action="page">${t('translatePageShort')}</button>
+        <button type="button" class="hxx-fab-btn" data-hxx-action="selection">${t('translateSelectionShort')}</button>
+        <button type="button" class="hxx-fab-btn" data-hxx-action="restore">${t('restoreOriginal')}</button>
+        <div class="hxx-fab-tts-row">
+          <button type="button" class="hxx-fab-icon" data-hxx-action="tts-page" title="${t('ttsFabReadPage')}">🔊</button>
+          <button type="button" class="hxx-fab-icon" data-hxx-action="tts-selection" title="${t('ttsFabReadSelection')}">▶</button>
+          <button type="button" class="hxx-fab-icon" data-hxx-action="tts-options" title="${t('ttsFabSettings')}">⚙</button>
+        </div>
+        <button type="button" class="hxx-fab-link" data-hxx-action="options">${t('settings')}</button>
+      </div>
+      <div class="hxx-fab-mode-play" hidden>
+        <div class="hxx-fab-tts-stack">
+          <button type="button" class="hxx-fab-icon playing" data-hxx-action="tts-pause" title="${t('ttsPause')}">⏸</button>
+          <button type="button" class="hxx-fab-icon" data-hxx-action="tts-prev" title="${t('ttsPrev')}">◀</button>
+          <button type="button" class="hxx-fab-icon" data-hxx-action="tts-next" title="${t('ttsNext')}">▶</button>
+          <button type="button" class="hxx-fab-icon" data-hxx-action="tts-stop" title="${t('ttsStop')}">⏹</button>
+          <div class="hxx-fab-tts-count">0/0</div>
+        </div>
+      </div>
       <div class="hxx-fab-status"></div>
     </div>
   `;
@@ -133,10 +232,11 @@ function buildFab(settings: ExtensionSettings): HTMLElement {
   const expand = () => {
     expanded = true;
     root.classList.add('hxx-fab-open');
-    refreshButtons();
+    refreshUi();
   };
   const collapse = () => {
     if (dragging) return;
+    if (isTtsActive()) return; // 播放中不收起
     expanded = false;
     root.classList.remove('hxx-fab-open');
   };
@@ -153,12 +253,39 @@ function buildFab(settings: ExtensionSettings): HTMLElement {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const action = btn.dataset.hxxAction;
-      if (action === 'options') {
+      if (action === 'options' || action === 'tts-options') {
         void chrome.runtime.sendMessage({ type: 'OPEN_OPTIONS' });
         return;
       }
       if (action === 'page' || action === 'selection' || action === 'restore') {
         void runAction(action);
+        return;
+      }
+      if (action === 'tts-page') {
+        void startPageTts().then((s) => syncFloatingPanelTts(s));
+        return;
+      }
+      if (action === 'tts-selection') {
+        void startSelectionTts().then((s) => syncFloatingPanelTts(s));
+        return;
+      }
+      if (action === 'tts-pause') {
+        const st = getTtsStatus();
+        void (st.status === 'paused' ? resumePlayback() : pausePlayback()).then((s) =>
+          syncFloatingPanelTts(s),
+        );
+        return;
+      }
+      if (action === 'tts-prev') {
+        void prevSegment().then((s) => syncFloatingPanelTts(s));
+        return;
+      }
+      if (action === 'tts-next') {
+        void nextSegment().then((s) => syncFloatingPanelTts(s));
+        return;
+      }
+      if (action === 'tts-stop') {
+        void stopPlayback().then((s) => syncFloatingPanelTts(s));
       }
     });
   });
@@ -260,6 +387,10 @@ function injectStyles(): void {
     }
     #hxxtranslate-fab.hxx-fab-open .hxx-fab-panel { display: block; }
     #hxxtranslate-fab.hxx-fab-open .hxx-fab-tab { display: none; }
+    #hxxtranslate-fab.hxx-fab-tts-playing .hxx-fab-panel {
+      width: 52px;
+      padding: 8px 6px;
+    }
     #hxxtranslate-fab .hxx-fab-handle {
       text-align: center;
       color: #94a3b8;
@@ -302,6 +433,50 @@ function injectStyles(): void {
       opacity: 0.5;
       cursor: default;
     }
+    #hxxtranslate-fab .hxx-fab-tts-row {
+      display: flex;
+      gap: 4px;
+      margin: 8px 0 6px;
+    }
+    #hxxtranslate-fab .hxx-fab-icon {
+      flex: 1;
+      height: 36px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: #f0f9ff;
+      cursor: pointer;
+      font-size: 14px;
+      color: #0369a1;
+    }
+    #hxxtranslate-fab .hxx-fab-icon:hover { background: #e0f2fe; }
+    #hxxtranslate-fab .hxx-fab-icon:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+    #hxxtranslate-fab .hxx-fab-icon.playing {
+      background: #fef3c7;
+      color: #b45309;
+      border-color: #fde68a;
+    }
+    #hxxtranslate-fab .hxx-fab-tts-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-items: stretch;
+    }
+    #hxxtranslate-fab .hxx-fab-tts-stack .hxx-fab-icon {
+      flex: none;
+      width: 100%;
+    }
+    #hxxtranslate-fab .hxx-fab-tts-count {
+      font-size: 11px;
+      font-weight: 600;
+      color: #3b82f6;
+      text-align: center;
+      padding: 4px 0;
+      background: #eff6ff;
+      border-radius: 6px;
+    }
     #hxxtranslate-fab .hxx-fab-link {
       display: block;
       width: 100%;
@@ -321,6 +496,9 @@ function injectStyles(): void {
       line-height: 1.3;
       word-break: break-word;
     }
+    #hxxtranslate-fab.hxx-fab-tts-playing .hxx-fab-status {
+      display: none;
+    }
   `;
   document.documentElement.appendChild(style);
 }
@@ -337,11 +515,13 @@ export async function mountFloatingPanel(): Promise<void> {
     applyTop(fabRoot, settings.floatingPanelTop ?? 40);
     applyLocale(fabRoot);
     syncFloatingPanelState();
+    syncFloatingPanelTts();
     return;
   }
   fabRoot = buildFab(settings);
   document.documentElement.appendChild(fabRoot);
   syncFloatingPanelState();
+  syncFloatingPanelTts();
 }
 
 export function unmountFloatingPanel(): void {
@@ -368,6 +548,7 @@ export async function syncFloatingPanelFromSettings(settings: ExtensionSettings)
       applyTop(fabRoot, settings.floatingPanelTop ?? 40);
       applyLocale(fabRoot);
       syncFloatingPanelState();
+      syncFloatingPanelTts();
     }
   } else {
     unmountFloatingPanel();

@@ -22,6 +22,31 @@ export type ExtensionSettings = {
   showFloatingPanel: boolean;
   /** 悬浮条距视口顶部百分比 0–100 */
   floatingPanelTop: number;
+  /** TTS：空字符串表示系统默认英文语音 */
+  ttsVoiceName: string;
+  /** TTS 语速 0.8–1.5 */
+  ttsRate: number;
+  /** 整页朗读时按段落/句子拆分 */
+  ttsSplitParagraphs: boolean;
+  /** 朗读时高亮当前段落 */
+  ttsHighlight: boolean;
+  /** 全部段落播放结束后自动停止 */
+  ttsAutoStopAtEnd: boolean;
+  /** 记住语速与语音（迷你播放器改动会写回） */
+  ttsRememberVoiceRate: boolean;
+};
+
+export type TtsPlaybackStatus = 'idle' | 'playing' | 'paused';
+
+export type TtsSegment = {
+  id: string;
+  text: string;
+};
+
+export type TtsVoiceInfo = {
+  voiceName: string;
+  lang: string;
+  eventTypes?: string[];
 };
 
 export type AuthState = {
@@ -88,7 +113,16 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
   siteBase: '',
   showFloatingPanel: true,
   floatingPanelTop: 40,
+  ttsVoiceName: '',
+  ttsRate: 1,
+  ttsSplitParagraphs: true,
+  ttsHighlight: true,
+  ttsAutoStopAtEnd: true,
+  ttsRememberVoiceRate: true,
 };
+
+export const TTS_RATE_MIN = 0.8;
+export const TTS_RATE_MAX = 1.5;
 
 /**
  * 浏览器登录页 / 会员中心使用的站点根地址。

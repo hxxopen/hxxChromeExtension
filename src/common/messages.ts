@@ -1,4 +1,14 @@
-import type { DisplayMode, ExtensionSettings, PageTranslateStatus } from './types';
+import type {
+  DisplayMode,
+  ExtensionSettings,
+  PageTranslateStatus,
+  TtsPlaybackStatus,
+  TtsVoiceInfo,
+} from './types';
+
+export type TtsControlAction = 'pause' | 'resume' | 'prev' | 'next' | 'stop';
+
+export type TtsEventType = 'start' | 'end' | 'word' | 'error' | 'interrupted' | 'cancelled';
 
 export type RuntimeMessage =
   | { type: 'GET_PAGE_STATUS' }
@@ -16,7 +26,19 @@ export type RuntimeMessage =
   | { type: 'OPEN_SUBSCRIBE' }
   | { type: 'OPEN_OPTIONS' }
   | { type: 'CHECK_TAB_TRANSLATABLE' }
-  | ({ type: 'PAGE_STATUS_CHANGED' } & PageStatusPayload);
+  | ({ type: 'PAGE_STATUS_CHANGED' } & PageStatusPayload)
+  | { type: 'TTS_START_PAGE' }
+  | { type: 'TTS_START_SELECTION' }
+  | { type: 'TTS_CONTROL'; action: TtsControlAction }
+  | { type: 'TTS_GET_STATUS' }
+  | { type: 'TTS_SPEAK'; text: string; rate?: number; voiceName?: string; lang?: string; requestId: string }
+  | { type: 'TTS_STOP' }
+  | { type: 'TTS_PAUSE' }
+  | { type: 'TTS_RESUME' }
+  | { type: 'TTS_GET_VOICES' }
+  | { type: 'TTS_EVENT'; event: TtsEventType; requestId: string; errorMessage?: string; charIndex?: number }
+  | ({ type: 'TTS_STATUS_CHANGED' } & TtsStatusPayload)
+  | { type: 'TTS_TEST_SPEAK'; text?: string };
 
 export type PageStatusPayload = {
   status: PageTranslateStatus;
@@ -28,6 +50,14 @@ export type PageStatusPayload = {
   translatable: boolean;
   hasSelection?: boolean;
   selectionOnly?: boolean;
+};
+
+export type TtsStatusPayload = {
+  status: TtsPlaybackStatus;
+  index: number;
+  total: number;
+  preview?: string;
+  error?: string;
 };
 
 export type BgTranslateRequest = {
@@ -46,4 +76,8 @@ export type BgTranslateResponse = {
   traceId?: string;
   providerCode?: string;
   subscribeUrl?: string;
+};
+
+export type TtsVoicesResponse = {
+  voices: TtsVoiceInfo[];
 };

@@ -2,7 +2,12 @@ import type { RuntimeMessage } from '../common/messages';
 import { t } from '../common/i18n';
 import { SETTINGS_KEY, getSettings } from '../common/storage';
 import { applyDisplayMode, ensureStyles, isRestrictedPage } from './dom-manager';
-import { mountFloatingPanel, syncFloatingPanelFromSettings, syncFloatingPanelState } from './floating-panel';
+import {
+  mountFloatingPanel,
+  syncFloatingPanelFromSettings,
+  syncFloatingPanelState,
+  syncFloatingPanelTts,
+} from './floating-panel';
 import {
   getState,
   onPageStateChange,
@@ -12,6 +17,18 @@ import {
   translateSelection,
 } from './page-translator';
 import { rememberSelection } from './text-node-parser';
+import {
+  getTtsStatus,
+  handleTtsEvent,
+  nextSegment,
+  onTtsStatusChange,
+  pausePlayback,
+  prevSegment,
+  resumePlayback,
+  startPageTts,
+  startSelectionTts,
+  stopPlayback,
+} from './tts/controller';
 
 type HxxGlobal = Window & {
   __hxxTranslateListening?: boolean;
@@ -37,6 +54,10 @@ onPageStateChange((state) => {
     .catch(() => {
       /* popup may be closed */
     });
+});
+
+onTtsStatusChange((tts) => {
+  syncFloatingPanelTts(tts);
 });
 
 function translatable(): boolean {
@@ -100,6 +121,66 @@ g.__hxxTranslateHandle = (message, sendResponse) => {
       respond({ ...result, translatable: true });
     })();
     return true;
+  }
+
+  if (message.type === 'TTS_START_PAGE') {
+    void (async () => {
+      if (!translatable()) {
+        respond({ status: 'idle', index: 0, total: 0, error: t('pageNotTranslatable') });
+        return;
+      }
+      rememberSelection();
+      respond(await startPageTts());
+    })();
+    return true;
+  }
+
+  if (message.type === 'TTS_START_SELECTION') {
+    void (async () => {
+      if (!translatable()) {
+        respond({ status: 'idle', index: 0, total: 0, error: t('pageNotTranslatable') });
+        return;
+      }
+      rememberSelection();
+      respond(await startSelectionTts());
+    })();
+    return true;
+  }
+
+  if (message.type === 'TTS_CONTROL') {
+    void (async () => {
+      switch (message.action) {
+        case 'pause':
+          respond(await pausePlayback());
+          break;
+        case 'resume':
+          respond(await resumePlayback());
+          break;
+        case 'prev':
+          respond(await prevSegment());
+          break;
+        case 'next':
+          respond(await nextSegment());
+          break;
+        case 'stop':
+          respond(await stopPlayback());
+          break;
+        default:
+          respond(getTtsStatus());
+      }
+    })();
+    return true;
+  }
+
+  if (message.type === 'TTS_GET_STATUS') {
+    respond(getTtsStatus());
+    return false;
+  }
+
+  if (message.type === 'TTS_EVENT') {
+    void handleTtsEvent(message);
+    respond({ ok: true });
+    return false;
   }
 
   return false;

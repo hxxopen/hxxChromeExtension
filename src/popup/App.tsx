@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import type { DisplayMode, ExtensionSettings, UiLanguage } from '../common/types';
 import { TARGET_LANGUAGES } from '../common/types';
-import type { PageStatusPayload, RuntimeMessage } from '../common/messages';
+import type { PageStatusPayload, RuntimeMessage, TtsStatusPayload } from '../common/messages';
 import { setUiLanguage, t, UI_LANGUAGES } from '../common/i18n';
 
 type AuthState = { accessToken: string; userId: string; email: string } | null;
@@ -27,6 +27,7 @@ export default function App() {
   const [page, setPage] = useState<PageStatusPayload | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [ttsBusy, setTtsBusy] = useState(false);
 
   const refresh = useCallback(async () => {
     const s = await send<ExtensionSettings>({ type: 'GET_SETTINGS' });
@@ -54,16 +55,21 @@ export default function App() {
 
   useEffect(() => {
     const onMessage = (message: RuntimeMessage) => {
-      if (message.type !== 'PAGE_STATUS_CHANGED') return;
-      setPage(message);
-      if (message.errorCode === 'UNAUTHENTICATED') {
-        setNotice(formatErrorNotice(t('loginFirst'), message));
-      } else if (message.errorCode === 'INSUFFICIENT_QUOTA') {
-        setNotice(formatErrorNotice(t('insufficientQuota'), message));
-      } else if (message.error) {
-        setNotice(formatErrorNotice(message.error, message));
-      } else {
-        setNotice(null);
+      if (message.type === 'PAGE_STATUS_CHANGED') {
+        setPage(message);
+        if (message.errorCode === 'UNAUTHENTICATED') {
+          setNotice(formatErrorNotice(t('loginFirst'), message));
+        } else if (message.errorCode === 'INSUFFICIENT_QUOTA') {
+          setNotice(formatErrorNotice(t('insufficientQuota'), message));
+        } else if (message.error) {
+          setNotice(formatErrorNotice(message.error, message));
+        } else {
+          setNotice(null);
+        }
+        return;
+      }
+      if (message.type === 'TTS_STATUS_CHANGED' && message.error) {
+        setNotice(message.error);
       }
     };
     chrome.runtime.onMessage.addListener(onMessage);
@@ -121,6 +127,28 @@ export default function App() {
       setPage(status);
     } finally {
       setBusy(false);
+    }
+  };
+
+  const onTtsPage = async () => {
+    setTtsBusy(true);
+    setNotice(null);
+    try {
+      const res = await send<TtsStatusPayload>({ type: 'TTS_START_PAGE' });
+      if (res.error) setNotice(res.error);
+    } finally {
+      setTtsBusy(false);
+    }
+  };
+
+  const onTtsSelection = async () => {
+    setTtsBusy(true);
+    setNotice(null);
+    try {
+      const res = await send<TtsStatusPayload>({ type: 'TTS_START_SELECTION' });
+      if (res.error) setNotice(res.error);
+    } finally {
+      setTtsBusy(false);
     }
   };
 
@@ -228,6 +256,42 @@ export default function App() {
             {hasSelection ? t('selectionHintHas') : t('selectionHintNone')}
           </p>
 
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              margin: '16px 0 12px',
+              color: '#9ca3af',
+              fontSize: 12,
+            }}
+          >
+            <span style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
+            <span>{t('ttsSection')}</span>
+            <span style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
+          </div>
+
+          <button
+            type="button"
+            disabled={translating || ttsBusy}
+            onClick={() => void onTtsPage()}
+            style={ttsBtn(translating || ttsBusy)}
+          >
+            <span aria-hidden>🔊</span> {t('ttsReadPage')}
+          </button>
+          <button
+            type="button"
+            disabled={translating || ttsBusy || !hasSelection}
+            onClick={() => void onTtsSelection()}
+            style={{ ...ttsBtn(translating || ttsBusy || !hasSelection), marginTop: 8 }}
+            title={!hasSelection ? t('ttsNoSelection') : undefined}
+          >
+            <span aria-hidden>🔊</span> {t('ttsReadSelection')}
+          </button>
+          {!hasSelection ? (
+            <p style={{ margin: '6px 0 0', fontSize: 11, color: '#64748b' }}>{t('ttsNoSelection')}</p>
+          ) : null}
+
           <div style={{ margin: '16px 0 8px', fontSize: 13, color: '#475569' }}>{t('displayMode')}</div>
           <label style={radioStyle}>
             <input
@@ -324,6 +388,23 @@ function secondaryBtn(disabled: boolean): CSSProperties {
     background: '#fff',
     color: disabled ? '#94a3b8' : '#0f172a',
     cursor: disabled ? 'default' : 'pointer',
+  };
+}
+
+function ttsBtn(disabled: boolean): CSSProperties {
+  return {
+    width: '100%',
+    padding: '10px 12px',
+    borderRadius: 10,
+    border: '1px solid #bae6fd',
+    background: disabled ? '#f8fafc' : '#f0f9ff',
+    color: disabled ? '#94a3b8' : '#0369a1',
+    fontWeight: 500,
+    cursor: disabled ? 'default' : 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   };
 }
 

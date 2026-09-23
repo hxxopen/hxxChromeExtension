@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HxxTranslate 设置页 - 朗读设置效果图</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #e5e7eb;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+    .settings {
+      width: 420px;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+      padding: 24px;
+      color: #1f2937;
+    }
+    .block {
+      background: #f9fafb;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      border: 1px solid #f3f4f6;
+    }
+    .block-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 14px;
+      color: #111827;
+    }
+    .field {
+      margin-bottom: 14px;
+    }
+    .field:last-child { margin-bottom: 0; }
+    .field-label {
+      font-size: 13px;
+      color: #6b7280;
+      margin-bottom: 6px;
+    }
+    .select-box {
+      width: 100%;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 14px;
+      background: #fff;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M3 4.5L6 7.5L9 4.5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+    }
+    .radio-item, .check-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .radio-item:last-child, .check-item:last-child { margin-bottom: 0; }
+    input[type="radio"], input[type="checkbox"] {
+      accent-color: #3b82f6;
+      width: 16px;
+      height: 16px;
+    }
+    .speed-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .speed-row input[type="range"] {
+      flex: 1;
+      accent-color: #3b82f6;
+    }
+    .speed-value {
+      font-size: 13px;
+      font-weight: 500;
+      color: #3b82f6;
+      min-width: 36px;
+    }
+    .hint {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-top: 4px;
+    }
+    .new-badge {
+      display: inline-block;
+      background: #dbeafe;
+      color: #1d4ed8;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .note {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 13px;
+      color: #6b7280;
+    }
+  </style>
+</head>
+<body>
+  <div>
+    <div class="settings">
+      <!-- 原有翻译设置（简化展示） -->
+      <div class="block">
+        <div class="block-title">翻译设置</div>
+        <div class="field">
+          <div class="field-label">默认目标语言</div>
+          <select class="select-box">
+            <option>简体中文</option>
+            <option>繁體中文</option>
+          </select>
+        </div>
+        <div class="field">
+          <div class="field-label">翻译显示</div>
+          <label class="radio-item">
+            <input type="radio" name="display" /> 仅显示译文
+          </label>
+          <label class="radio-item">
+            <input type="radio" name="display" checked /> 原文 + 译文
+          </label>
+        </div>
+      </div>
+
+      <!-- 原有自动翻译 -->
+      <div class="block">
+        <div class="block-title">自动翻译</div>
+        <label class="check-item">
+          <input type="checkbox" /> 打开网页后自动翻译整页
+        </label>
+      </div>
+
+      <!-- 原有页面控制条 -->
+      <div class="block">
+        <div class="block-title">页面控制条</div>
+        <label class="check-item">
+          <input type="checkbox" checked /> 显示右侧悬浮控制条（鼠标靠近展开，可上下拖动）
+        </label>
+        <p class="hint">可在页面右侧直接点「翻译整页 / 选中首段」，无需反复打开扩展弹窗。</p>
+      </div>
+
+      <!-- 新增：朗读设置 -->
+      <div class="block" style="border-color: #bfdbfe; background: #f0f9ff;">
+        <div class="block-title">
+          朗读设置
+          <span class="new-badge">新增</span>
+        </div>
+
+        <div class="field">
+          <div class="field-label">默认语音</div>
+          <select class="select-box">
+            <option>系统英文语音（自动选择 en-US）</option>
+            <option>Microsoft David - English (United States)</option>
+            <option>Google US English</option>
+            <option>Samantha (macOS)</option>
+          </select>
+          <p class="hint">优先使用本地系统英文语音，离线可用</p>
+        </div>
+
+        <div class="field">
+          <div class="field-label">语速</div>
+          <div class="speed-row">
+            <span style="font-size:12px;color:#9ca3af;">0.8x</span>
+            <input type="range" min="0.5" max="2" step="0.1" value="1.0">
+            <span class="speed-value">1.0x</span>
+            <span style="font-size:12px;color:#9ca3af;">1.5x</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="check-item">
+            <input type="checkbox" checked /> 整页朗读时按段落拆分（推荐）
+          </label>
+          <label class="check-item">
+            <input type="checkbox" checked /> 朗读时高亮当前段落
+          </label>
+          <label class="check-item">
+            <input type="checkbox" checked /> 播放结束后自动停止
+          </label>
+          <label class="check-item">
+            <input type="checkbox" checked /> 记住上次语速与语音
+          </label>
+        </div>
+      </div>
+    </div>
+    <p class="note">效果图 · 在现有设置页新增「朗读设置」区块（蓝色边框标识新增）</p>
+  </div>
+</body>
+</html>
