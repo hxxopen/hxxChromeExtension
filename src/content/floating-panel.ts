@@ -174,19 +174,21 @@ function applyLocale(root: HTMLElement): void {
   if (optionsBtn) optionsBtn.textContent = t('settings');
   const ttsPage = root.querySelector('[data-hxx-action="tts-page"]');
   if (ttsPage) {
-    ttsPage.textContent = '🔊';
+    ttsPage.textContent = `🔊 ${t('ttsFabReadPage')}`;
     (ttsPage as HTMLElement).title = t('ttsFabReadPage');
   }
   const ttsSel = root.querySelector('[data-hxx-action="tts-selection"]');
   if (ttsSel) {
-    ttsSel.textContent = '▶';
+    ttsSel.textContent = `▶ ${t('ttsFabReadSelection')}`;
     (ttsSel as HTMLElement).title = t('ttsFabReadSelection');
   }
   const ttsOpt = root.querySelector('[data-hxx-action="tts-options"]');
   if (ttsOpt) {
-    ttsOpt.textContent = '⚙';
+    ttsOpt.textContent = t('ttsFabSettings');
     (ttsOpt as HTMLElement).title = t('ttsFabSettings');
   }
+  const divider = root.querySelector('.hxx-fab-tts-divider');
+  if (divider) divider.textContent = t('ttsSection');
 }
 
 function buildFab(settings: ExtensionSettings): HTMLElement {
@@ -205,11 +207,10 @@ function buildFab(settings: ExtensionSettings): HTMLElement {
         <button type="button" class="hxx-fab-btn primary" data-hxx-action="page">${t('translatePageShort')}</button>
         <button type="button" class="hxx-fab-btn" data-hxx-action="selection">${t('translateSelectionShort')}</button>
         <button type="button" class="hxx-fab-btn" data-hxx-action="restore">${t('restoreOriginal')}</button>
-        <div class="hxx-fab-tts-row">
-          <button type="button" class="hxx-fab-icon" data-hxx-action="tts-page" title="${t('ttsFabReadPage')}">🔊</button>
-          <button type="button" class="hxx-fab-icon" data-hxx-action="tts-selection" title="${t('ttsFabReadSelection')}">▶</button>
-          <button type="button" class="hxx-fab-icon" data-hxx-action="tts-options" title="${t('ttsFabSettings')}">⚙</button>
-        </div>
+        <div class="hxx-fab-tts-divider">${t('ttsSection')}</div>
+        <button type="button" class="hxx-fab-btn tts" data-hxx-action="tts-page">🔊 ${t('ttsFabReadPage')}</button>
+        <button type="button" class="hxx-fab-btn tts" data-hxx-action="tts-selection">▶ ${t('ttsFabReadSelection')}</button>
+        <button type="button" class="hxx-fab-link" data-hxx-action="tts-options">${t('ttsFabSettings')}</button>
         <button type="button" class="hxx-fab-link" data-hxx-action="options">${t('settings')}</button>
       </div>
       <div class="hxx-fab-mode-play" hidden>
@@ -432,6 +433,30 @@ function injectStyles(): void {
     #hxxtranslate-fab .hxx-fab-btn:disabled {
       opacity: 0.5;
       cursor: default;
+    }
+    #hxxtranslate-fab .hxx-fab-tts-divider {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 10px 0 8px;
+      font-size: 11px;
+      color: #94a3b8;
+    }
+    #hxxtranslate-fab .hxx-fab-tts-divider::before,
+    #hxxtranslate-fab .hxx-fab-tts-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #e2e8f0;
+    }
+    #hxxtranslate-fab .hxx-fab-btn.tts {
+      background: #f0f9ff;
+      border-color: #bae6fd;
+      color: #0369a1;
+      font-weight: 600;
+    }
+    #hxxtranslate-fab .hxx-fab-btn.tts:hover {
+      background: #e0f2fe;
     }
     #hxxtranslate-fab .hxx-fab-tts-row {
       display: flex;

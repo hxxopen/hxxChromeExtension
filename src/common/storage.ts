@@ -4,20 +4,43 @@ import {
   type AuthState,
   type DisplayMode,
   type ExtensionSettings,
+  type TtsEndMode,
+  type TtsSpeechLang,
 } from './types';
 
 export const SETTINGS_KEY = 'hxxtranslate.settings';
 const AUTH_KEY = 'hxxtranslate.auth';
 
-function withUiLanguage(settings: ExtensionSettings): ExtensionSettings {
-  const next = { ...settings, uiLanguage: normalizeUiLanguage(settings.uiLanguage) };
+export function normalizeTtsSpeechLang(value: unknown): TtsSpeechLang {
+  return value === 'en' || value === 'zh' ? value : 'auto';
+}
+
+export function normalizeTtsEndMode(
+  value: unknown,
+  legacyAutoStop?: unknown,
+): TtsEndMode {
+  if (value === 'loop' || value === 'stop' || value === 'exit') return value;
+  // 兼容旧勾选：关 = 停住保留播放器；开 = 播完退出
+  if (legacyAutoStop === false) return 'stop';
+  if (legacyAutoStop === true) return 'exit';
+  return 'loop';
+}
+
+function withNormalizedSettings(settings: ExtensionSettings): ExtensionSettings {
+  const next = {
+    ...settings,
+    uiLanguage: normalizeUiLanguage(settings.uiLanguage),
+    ttsSpeechLang: normalizeTtsSpeechLang(settings.ttsSpeechLang),
+    ttsEndMode: normalizeTtsEndMode(settings.ttsEndMode, settings.ttsAutoStopAtEnd),
+  };
+  delete next.ttsAutoStopAtEnd;
   setUiLanguage(next.uiLanguage);
   return next;
 }
 
 export async function getSettings(): Promise<ExtensionSettings> {
   const data = await chrome.storage.local.get(SETTINGS_KEY);
-  return withUiLanguage({
+  return withNormalizedSettings({
     ...DEFAULT_SETTINGS,
     ...(data[SETTINGS_KEY] as Partial<ExtensionSettings> | undefined),
   });
@@ -25,7 +48,7 @@ export async function getSettings(): Promise<ExtensionSettings> {
 
 export async function saveSettings(patch: Partial<ExtensionSettings>): Promise<ExtensionSettings> {
   const current = await getSettings();
-  const next = withUiLanguage({ ...current, ...patch });
+  const next = withNormalizedSettings({ ...current, ...patch });
   await chrome.storage.local.set({ [SETTINGS_KEY]: next });
   return next;
 }

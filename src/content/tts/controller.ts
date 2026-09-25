@@ -1,11 +1,16 @@
 import { t } from '../../common/i18n';
-import type { RuntimeMessage, TtsStatusPayload } from '../../common/messages';
+import type { RuntimeMessage, TtsStatusPayload, TtsVoicesResponse } from '../../common/messages';
 import { getSettings, saveSettings } from '../../common/storage';
-import type { TtsPlaybackStatus } from '../../common/types';
+import type { TtsEndMode, TtsPlaybackStatus } from '../../common/types';
 import { TTS_RATE_MAX, TTS_RATE_MIN } from '../../common/types';
 import { clearHighlight, highlightElement } from './highlighter';
 import { ensurePlayer, hidePlayer, updatePlayer } from './player-ui';
-import { collectPageTtsSegments, collectSelectionTtsSegments, type TtsDomSegment } from './segmenter';
+import {
+  collectPageTtsSegments,
+  collectSelectionTtsSegments,
+  type SpeechLang,
+  type TtsDomSegment,
+} from './segmenter';
 
 type Listener = (status: TtsStatusPayload) => void;
 
@@ -15,15 +20,34 @@ let status: TtsPlaybackStatus = 'idle';
 let requestId = '';
 let rate = 1;
 let voiceName = '';
+let voiceLangByName = new Map<string, string>();
 let highlightOn = true;
-let autoStopAtEnd = true;
+let endMode: TtsEndMode = 'loop';
 let rememberSettings = true;
 let error: string | undefined;
 let listener: Listener | null = null;
 let speakSeq = 0;
+/** 当前段内已读到的字符下标（来自 chrome.tts word 事件） */
+let charIndex = 0;
+/** 自然播完后停在播放器上时，下次「继续」需从头开播 */
+let awaitingReplay = false;
 
 function clampRate(v: number): number {
   return Math.min(TTS_RATE_MAX, Math.max(TTS_RATE_MIN, Number(v.toFixed(2))));
+}
+
+function chromeLang(lang: SpeechLang): string {
+  return lang === 'zh' ? 'zh-CN' : 'en-US';
+}
+
+/** 仅当用户选中的语音语言与当前段落一致时才指定 voiceName，否则交给系统按 lang 选 */
+function voiceForSegment(lang: SpeechLang): string | undefined {
+  if (!voiceName) return undefined;
+  const vLang = (voiceLangByName.get(voiceName) || '').toLowerCase();
+  if (!vLang) return undefined;
+  if (lang === 'zh' && vLang.startsWith('zh')) return voiceName;
+  if (lang === 'en' && vLang.startsWith('en')) return voiceName;
+  return undefined;
 }
 
 function emit(): void {
@@ -52,6 +76,7 @@ function syncPlayerUi(): void {
     onStop: () => void stopPlayback(),
     onClose: () => void stopPlayback(),
     onRateChange: (v) => void setRate(v),
+    onEndModeChange: (mode) => void setEndMode(mode),
     onPreviewClick: () => {
       const el = segments[index]?.el;
       if (el) highlightElement(el, highlightOn);
@@ -62,6 +87,9 @@ function syncPlayerUi(): void {
     index,
     total: segments.length,
     preview: segments[index]?.text || '',
+    lang: segments[index]?.lang,
+    charIndex,
+    endMode,
     rate,
   });
 }
@@ -85,8 +113,14 @@ async function loadTtsPrefs(): Promise<void> {
   rate = clampRate(s.ttsRate ?? 1);
   voiceName = s.ttsVoiceName || '';
   highlightOn = s.ttsHighlight !== false;
-  autoStopAtEnd = s.ttsAutoStopAtEnd !== false;
+  endMode = s.ttsEndMode ?? 'loop';
   rememberSettings = s.ttsRememberVoiceRate !== false;
+  try {
+    const vr = (await chrome.runtime.sendMessage({ type: 'TTS_GET_VOICES' })) as TtsVoicesResponse;
+    voiceLangByName = new Map((vr.voices || []).map((v) => [v.voiceName, v.lang || '']));
+  } catch {
+    voiceLangByName = new Map();
+  }
 }
 
 async function speakCurrent(): Promise<void> {
@@ -98,6 +132,7 @@ async function speakCurrent(): Promise<void> {
   highlightElement(seg.el, highlightOn);
   const seq = ++speakSeq;
   requestId = `tts-${Date.now()}-${seq}`;
+  charIndex = 0;
   status = 'playing';
   error = undefined;
   emit();
@@ -106,8 +141,8 @@ async function speakCurrent(): Promise<void> {
     type: 'TTS_SPEAK',
     text: seg.text,
     rate,
-    voiceName: voiceName || undefined,
-    lang: 'en-US',
+    voiceName: voiceForSegment(seg.lang),
+    lang: chromeLang(seg.lang),
     requestId,
   })) as { ok?: boolean; error?: string };
 
@@ -122,29 +157,70 @@ async function speakCurrent(): Promise<void> {
 }
 
 async function finishAll(): Promise<void> {
-  if (autoStopAtEnd) {
-    await stopPlayback();
-  } else {
-    status = 'paused';
-    emit();
+  if (endMode === 'loop') {
+    if (!segments.length) {
+      await stopPlayback();
+      return;
+    }
+    index = 0;
+    charIndex = 0;
+    awaitingReplay = false;
+    await speakCurrent();
+    return;
   }
+
+  if (endMode === 'stop') {
+    // 保留播放器，回到开头并暂停，方便再点继续重播
+    index = 0;
+    charIndex = 0;
+    awaitingReplay = true;
+    status = 'paused';
+    highlightElement(segments[0]?.el ?? null, highlightOn);
+    emit();
+    return;
+  }
+
+  // exit：关闭播放器
+  awaitingReplay = false;
+  await stopPlayback();
+}
+
+export async function resumePlayback(): Promise<TtsStatusPayload> {
+  if (status !== 'paused') return getTtsStatus();
+  if (awaitingReplay || !requestId) {
+    awaitingReplay = false;
+    await speakCurrent();
+    return getTtsStatus();
+  }
+  await chrome.runtime.sendMessage({ type: 'TTS_RESUME' });
+  status = 'playing';
+  emit();
+  return getTtsStatus();
+}
+
+function failIdle(message: string): TtsStatusPayload {
+  error = message;
+  status = 'idle';
+  segments = [];
+  index = 0;
+  emit();
+  return getTtsStatus();
 }
 
 export async function startPageTts(): Promise<TtsStatusPayload> {
   await loadTtsPrefs();
   const settings = await getSettings();
-  const list = collectPageTtsSegments(settings.ttsSplitParagraphs !== false);
+  const { segments: list, unsupportedOnly } = collectPageTtsSegments(
+    settings.ttsSplitParagraphs !== false,
+    settings.ttsSpeechLang ?? 'auto',
+  );
   if (!list.length) {
-    error = t('ttsNoContent');
-    status = 'idle';
-    segments = [];
-    index = 0;
-    emit();
-    return getTtsStatus();
+    return failIdle(unsupportedOnly ? t('ttsUnsupportedLanguage') : t('ttsNoContent'));
   }
   await chrome.runtime.sendMessage({ type: 'TTS_STOP' });
   segments = list;
   index = 0;
+  awaitingReplay = false;
   await speakCurrent();
   return getTtsStatus();
 }
@@ -152,34 +228,26 @@ export async function startPageTts(): Promise<TtsStatusPayload> {
 export async function startSelectionTts(): Promise<TtsStatusPayload> {
   await loadTtsPrefs();
   const settings = await getSettings();
-  const list = collectSelectionTtsSegments(settings.ttsSplitParagraphs !== false);
+  const { segments: list, unsupportedOnly } = collectSelectionTtsSegments(
+    settings.ttsSplitParagraphs !== false,
+    settings.ttsSpeechLang ?? 'auto',
+  );
   if (!list.length) {
-    error = t('ttsNoSelection');
-    status = 'idle';
-    segments = [];
-    index = 0;
-    emit();
-    return getTtsStatus();
+    return failIdle(unsupportedOnly ? t('ttsUnsupportedLanguage') : t('ttsNoSelection'));
   }
   await chrome.runtime.sendMessage({ type: 'TTS_STOP' });
   segments = list;
   index = 0;
+  awaitingReplay = false;
   await speakCurrent();
   return getTtsStatus();
 }
 
 export async function pausePlayback(): Promise<TtsStatusPayload> {
   if (status !== 'playing') return getTtsStatus();
+  awaitingReplay = false;
   await chrome.runtime.sendMessage({ type: 'TTS_PAUSE' });
   status = 'paused';
-  emit();
-  return getTtsStatus();
-}
-
-export async function resumePlayback(): Promise<TtsStatusPayload> {
-  if (status !== 'paused') return getTtsStatus();
-  await chrome.runtime.sendMessage({ type: 'TTS_RESUME' });
-  status = 'playing';
   emit();
   return getTtsStatus();
 }
@@ -187,6 +255,8 @@ export async function resumePlayback(): Promise<TtsStatusPayload> {
 export async function stopPlayback(): Promise<TtsStatusPayload> {
   speakSeq += 1;
   requestId = '';
+  charIndex = 0;
+  awaitingReplay = false;
   await chrome.runtime.sendMessage({ type: 'TTS_STOP' });
   status = 'idle';
   clearHighlight();
@@ -227,13 +297,29 @@ export async function setRate(next: number): Promise<void> {
   }
 }
 
+export async function setEndMode(mode: TtsEndMode): Promise<void> {
+  endMode = mode === 'stop' || mode === 'exit' ? mode : 'loop';
+  await saveSettings({ ttsEndMode: endMode });
+  syncPlayerUi();
+}
+
 export async function handleTtsEvent(message: {
   event: string;
   requestId: string;
   errorMessage?: string;
+  charIndex?: number;
 }): Promise<void> {
   if (message.requestId !== requestId) return;
+  if (message.event === 'start' || message.event === 'word') {
+    if (typeof message.charIndex === 'number' && message.charIndex >= 0) {
+      charIndex = message.charIndex;
+      syncPlayerUi();
+    }
+    return;
+  }
   if (message.event === 'end') {
+    charIndex = segments[index]?.text.length || 0;
+    syncPlayerUi();
     if (index >= segments.length - 1) {
       await finishAll();
       return;

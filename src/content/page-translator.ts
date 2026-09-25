@@ -2,11 +2,12 @@ import { t } from '../common/i18n';
 import type { DisplayMode, PageTranslateStatus } from '../common/types';
 import type { BgTranslateResponse } from '../common/messages';
 import {
-  collectBlocksFromSelection,
+  clearRememberedSelection,
+  collectExactSelectionTargets,
   collectTranslateBlocks,
+  getRememberedSelectionText,
   hasMeaningfulSelection,
   rememberSelection,
-  clearRememberedSelection,
 } from './text-node-parser';
 import {
   applyDisplayMode,
@@ -225,10 +226,15 @@ async function runTranslate(
 }
 
 function resolveSelectionOrFirstBlocks(): { blocks: HTMLElement[]; selectionOnly: boolean } {
-  const selected = collectBlocksFromSelection();
-  if (selected.length) {
-    return { blocks: filterFreshBlocks(selected), selectionOnly: true };
+  // 有选中文本：只译选中部分，绝不扩成整段
+  const selectedText = getRememberedSelectionText().trim();
+  if (selectedText.length >= 2) {
+    const exact = collectExactSelectionTargets();
+    if (exact.length) {
+      return { blocks: filterFreshBlocks(exact), selectionOnly: true };
+    }
   }
+  // 无选区：退回第一段（保持原产品行为）
   const all = collectTranslateBlocks(document.body);
   const first = all[0] ? [all[0]] : [];
   return { blocks: filterFreshBlocks(first), selectionOnly: true };

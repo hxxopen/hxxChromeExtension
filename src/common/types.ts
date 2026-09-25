@@ -3,6 +3,17 @@ export type DisplayMode = 'translation' | 'bilingual';
 /** Extension UI language (not the translation target). */
 export type UiLanguage = 'en' | 'zh-CN';
 
+/** TTS 朗读语言偏好（自动 / 指定中英文） */
+export type TtsSpeechLang = 'auto' | 'en' | 'zh';
+
+/**
+ * 全部段落播完后的行为：
+ * - loop：循环从头再播（默认）
+ * - stop：停在播放器上（可继续再播），不自动关闭
+ * - exit：关闭播放器并退出朗读
+ */
+export type TtsEndMode = 'loop' | 'stop' | 'exit';
+
 export type PageTranslateStatus = 'UNTRANSLATED' | 'TRANSLATING' | 'TRANSLATED' | 'RESTORING';
 
 export type ExtensionSettings = {
@@ -22,16 +33,27 @@ export type ExtensionSettings = {
   showFloatingPanel: boolean;
   /** 悬浮条距视口顶部百分比 0–100 */
   floatingPanelTop: number;
-  /** TTS：空字符串表示系统默认英文语音 */
+  /** TTS：空字符串表示系统按内容语言自动选语音（中/英） */
   ttsVoiceName: string;
+  /**
+   * TTS 播放语言：
+   * - auto：优先原文（中/英自动识别）
+   * - en / zh：优先该语言；可匹配原文或译文，都不匹配则不朗读
+   */
+  ttsSpeechLang: TtsSpeechLang;
   /** TTS 语速 0.8–1.5 */
   ttsRate: number;
   /** 整页朗读时按段落/句子拆分 */
   ttsSplitParagraphs: boolean;
   /** 朗读时高亮当前段落 */
   ttsHighlight: boolean;
-  /** 全部段落播放结束后自动停止 */
-  ttsAutoStopAtEnd: boolean;
+  /**
+   * 全部播完后的行为：循环 / 停止保留播放器 / 自动退出
+   * （旧字段 ttsAutoStopAtEnd 仅用于迁移）
+   */
+  ttsEndMode: TtsEndMode;
+  /** @deprecated 请使用 ttsEndMode；读取时会迁移 */
+  ttsAutoStopAtEnd?: boolean;
   /** 记住语速与语音（迷你播放器改动会写回） */
   ttsRememberVoiceRate: boolean;
 };
@@ -114,10 +136,11 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
   showFloatingPanel: true,
   floatingPanelTop: 40,
   ttsVoiceName: '',
+  ttsSpeechLang: 'auto',
   ttsRate: 1,
   ttsSplitParagraphs: true,
   ttsHighlight: true,
-  ttsAutoStopAtEnd: true,
+  ttsEndMode: 'loop',
   ttsRememberVoiceRate: true,
 };
 

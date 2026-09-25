@@ -73,18 +73,38 @@ async function sendToTab<T>(message: RuntimeMessage): Promise<T> {
   }
 
   const tabId = tab.id;
+  const needsFreshContent =
+    typeof message.type === 'string' &&
+    (message.type.startsWith('TTS_') ||
+      message.type === 'TRANSLATE_PAGE' ||
+      message.type === 'TRANSLATE_SELECTION');
+
+  const injectContent = async () => {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['content.js'],
+    });
+  };
+
+  const send = async () => (await chrome.tabs.sendMessage(tabId, message)) as T;
+
   try {
-    return (await chrome.tabs.sendMessage(tabId, message)) as T;
+    if (needsFreshContent) {
+      // 朗读相关命令先刷新 content，避免页面仍挂着旧脚本导致无响应
+      try {
+        await injectContent();
+      } catch {
+        /* 可能已注入或无权限，继续尝试发送 */
+      }
+    }
+    return await send();
   } catch (err) {
     const msg = String((err as Error)?.message || err);
     if (!/Receiving end does not exist|Could not establish connection/i.test(msg)) {
       throw err;
     }
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      files: ['content.js'],
-    });
-    return (await chrome.tabs.sendMessage(tabId, message)) as T;
+    await injectContent();
+    return await send();
   }
 }
 
@@ -93,6 +113,7 @@ function notifyTabTtsEvent(
   requestId: string,
   event: 'start' | 'end' | 'word' | 'error' | 'interrupted' | 'cancelled',
   errorMessage?: string,
+  charIndex?: number,
 ): void {
   void chrome.tabs
     .sendMessage(tabId, {
@@ -100,6 +121,7 @@ function notifyTabTtsEvent(
       event,
       requestId,
       errorMessage,
+      charIndex,
     } satisfies RuntimeMessage)
     .catch(() => {
       /* tab closed */
@@ -117,17 +139,18 @@ function speakWithChromeTts(
       lang: opts.lang || 'en-US',
       rate: opts.rate ?? 1,
       enqueue: false,
+      desiredEventTypes: ['start', 'end', 'word', 'error', 'interrupted', 'cancelled'],
       onEvent: (event) => {
         if (!activeTts || activeTts.requestId !== opts.requestId) return;
         const type = event.type;
         if (type === 'start') {
-          if (tabId != null) notifyTabTtsEvent(tabId, opts.requestId, 'start');
+          if (tabId != null) notifyTabTtsEvent(tabId, opts.requestId, 'start', undefined, event.charIndex);
         } else if (type === 'end') {
           if (tabId != null) notifyTabTtsEvent(tabId, opts.requestId, 'end');
           if (activeTts?.requestId === opts.requestId) activeTts = null;
         } else if (type === 'word') {
           if (tabId != null) {
-            notifyTabTtsEvent(tabId, opts.requestId, 'word');
+            notifyTabTtsEvent(tabId, opts.requestId, 'word', undefined, event.charIndex);
           }
         } else if (type === 'error') {
           if (tabId != null) {
@@ -165,29 +188,64 @@ function speakWithChromeTts(
   });
 }
 
-async function listEnglishVoices(): Promise<TtsVoicesResponse> {
-  return new Promise((resolve) => {
-    try {
-      chrome.tts.getVoices((voices) => {
-        const list = (voices || [])
-          .filter((v) => (v.lang || '').toLowerCase().startsWith('en'))
-          .map((v) => ({
-            voiceName: v.voiceName || '',
-            lang: v.lang || 'en-US',
-            eventTypes: v.eventTypes,
-          }))
-          .filter((v) => v.voiceName);
-        list.sort((a, b) => {
-          const score = (lang: string) =>
-            lang.toLowerCase().startsWith('en-us') ? 0 : lang.toLowerCase().startsWith('en-gb') ? 1 : 2;
-          return score(a.lang) - score(b.lang) || a.voiceName.localeCompare(b.voiceName);
-        });
-        resolve({ voices: list });
-      });
-    } catch {
-      resolve({ voices: [] });
-    }
-  });
+async function listSpeechVoices(): Promise<TtsVoicesResponse> {
+  const mapVoices = (voices: chrome.tts.TtsVoice[] | undefined) => {
+    const list = (voices || [])
+      .filter((v) => {
+        const lang = (v.lang || '').toLowerCase().replace(/_/g, '-');
+        const name = (v.voiceName || '').toLowerCase();
+        if (lang.startsWith('en') || lang.startsWith('zh') || lang.startsWith('cmn')) return true;
+        // 部分国产镜像 lang 为空，但名称带 Chinese / 中文 / Huihui / Yaoyao 等
+        if (/chinese|中文|普通话|huihui|yaoyao|kangkang|hanhan|lili/.test(name)) return true;
+        return false;
+      })
+      .map((v) => ({
+        voiceName: v.voiceName || '',
+        lang: normalizeVoiceLang(v.lang, v.voiceName),
+        eventTypes: v.eventTypes,
+      }))
+      .filter((v) => v.voiceName);
+    list.sort((a, b) => {
+      const score = (lang: string) => {
+        const l = lang.toLowerCase();
+        if (l.startsWith('en-us')) return 0;
+        if (l.startsWith('en-gb')) return 1;
+        if (l.startsWith('en')) return 2;
+        if (l.startsWith('zh-cn') || l === 'zh') return 3;
+        if (l.startsWith('zh-tw') || l.startsWith('zh-hk')) return 4;
+        if (l.startsWith('zh') || l.startsWith('cmn')) return 5;
+        return 9;
+      };
+      return score(a.lang) - score(b.lang) || a.voiceName.localeCompare(b.voiceName);
+    });
+    return list;
+  };
+
+  const once = (): Promise<chrome.tts.TtsVoice[]> =>
+    new Promise((resolve) => {
+      try {
+        chrome.tts.getVoices((voices) => resolve(voices || []));
+      } catch {
+        resolve([]);
+      }
+    });
+
+  let voices = await once();
+  // Windows 上首次可能尚未就绪，短暂重试一次
+  if (!voices.length) {
+    await new Promise((r) => setTimeout(r, 250));
+    voices = await once();
+  }
+  return { voices: mapVoices(voices) };
+}
+
+function normalizeVoiceLang(lang: string | undefined, voiceName: string | undefined): string {
+  const raw = (lang || '').trim();
+  if (raw) return raw.replace(/_/g, '-');
+  const name = (voiceName || '').toLowerCase();
+  if (/chinese|中文|普通话|huihui|yaoyao|kangkang|hanhan|lili/.test(name)) return 'zh-CN';
+  if (/english|zira|david|mark|aria|jenny/.test(name)) return 'en-US';
+  return 'en-US';
 }
 
 chrome.runtime.onMessage.addListener((message: RuntimeMessage | BgTranslateRequest, sender, sendResponse) => {
@@ -290,7 +348,7 @@ chrome.runtime.onMessage.addListener((message: RuntimeMessage | BgTranslateReque
         return { translatable: !isRestrictedUrl(tab?.url), url: tab?.url || '' };
       }
       case 'TTS_GET_VOICES':
-        return listEnglishVoices();
+        return listSpeechVoices();
       case 'TTS_SPEAK': {
         const tabId = sender.tab?.id ?? (await activeTab())?.id ?? null;
         return speakWithChromeTts(tabId, message.text, {

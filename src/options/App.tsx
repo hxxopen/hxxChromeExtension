@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react';
-import type { AccountInfo, DisplayMode, ExtensionSettings, TtsVoiceInfo, UiLanguage } from '../common/types';
+import type { AccountInfo, DisplayMode, ExtensionSettings, TtsEndMode, TtsSpeechLang, TtsVoiceInfo, UiLanguage } from '../common/types';
 import { OFFICIAL_API_BASE, TARGET_LANGUAGES, TTS_RATE_MAX, TTS_RATE_MIN } from '../common/types';
 import type { TtsVoicesResponse } from '../common/messages';
 import { dateLocale, setUiLanguage, t, UI_LANGUAGES } from '../common/i18n';
@@ -192,7 +192,23 @@ export default function App() {
 
       <section style={card}>
         <h2 style={h2}>{t('ttsSettings')}</h2>
-        <div style={labelRow}>
+        <label style={label} htmlFor="tts-speech-lang">
+          {t('ttsSpeechLang')}
+        </label>
+        <select
+          id="tts-speech-lang"
+          value={settings.ttsSpeechLang || 'auto'}
+          onChange={(e) => void patch({ ttsSpeechLang: e.target.value as TtsSpeechLang })}
+          style={input}
+          aria-label={t('ttsSpeechLang')}
+        >
+          <option value="auto">{t('ttsSpeechLangAuto')}</option>
+          <option value="en">{t('ttsSpeechLangEn')}</option>
+          <option value="zh">{t('ttsSpeechLangZh')}</option>
+        </select>
+        <p style={{ margin: '8px 0 0', fontSize: 12, color: '#64748b' }}>{t('ttsSpeechLangHint')}</p>
+
+        <div style={{ ...labelRow, marginTop: 14 }}>
           <label style={{ ...label, marginBottom: 0 }} htmlFor="tts-default-voice">
             {t('ttsDefaultVoice')}
           </label>
@@ -261,14 +277,21 @@ export default function App() {
           />
           {t('ttsHighlightCurrent')}
         </label>
-        <label style={radio}>
-          <input
-            type="checkbox"
-            checked={settings.ttsAutoStopAtEnd !== false}
-            onChange={(e) => void patch({ ttsAutoStopAtEnd: e.target.checked })}
-          />
-          {t('ttsAutoStopAtEnd')}
+        <label style={{ ...label, marginTop: 14 }} htmlFor="tts-end-mode">
+          {t('ttsEndMode')}
         </label>
+        <select
+          id="tts-end-mode"
+          value={settings.ttsEndMode || 'loop'}
+          onChange={(e) => void patch({ ttsEndMode: e.target.value as TtsEndMode })}
+          style={input}
+          aria-label={t('ttsEndMode')}
+        >
+          <option value="loop">{t('ttsEndModeLoop')}</option>
+          <option value="stop">{t('ttsEndModeStop')}</option>
+          <option value="exit">{t('ttsEndModeExit')}</option>
+        </select>
+        <p style={{ margin: '8px 0 0', fontSize: 12, color: '#64748b' }}>{t('ttsEndModeHint')}</p>
         <label style={radio}>
           <input
             type="checkbox"
@@ -341,7 +364,7 @@ export default function App() {
       <section style={card}>
         <h2 style={h2}>{t('about')}</h2>
         <p style={{ margin: 0 }}>HxxTranslate</p>
-        <p style={{ margin: '4px 0 0', color: '#64748b' }}>Version 1.1.0</p>
+        <p style={{ margin: '4px 0 0', color: '#64748b' }}>Version 1.1.1</p>
       </section>
     </div>
   );
@@ -413,6 +436,7 @@ function VoicePackHelpPanel({ lang }: { lang: UiLanguage }) {
       <p style={{ margin: 0, fontSize: 12, color: '#475569', lineHeight: 1.55 }}>{help.why}</p>
       <HelpSectionBlock section={help.online} />
       <HelpSectionBlock section={help.offline} />
+      <HelpSectionBlock section={help.fullIso} />
       <HelpSectionBlock section={help.afterInstall} />
       <HelpSectionBlock section={help.stillBroken} />
     </div>

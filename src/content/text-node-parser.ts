@@ -270,6 +270,38 @@ export function collectBlocksFromSelection(): HTMLElement[] {
   return rememberedBlocks();
 }
 
+/**
+ * 选中翻译专用：只处理「选中的那段文字」，不扩成整段。
+ * - 选区≈整块：就地翻译该块
+ * - 否则：就地 wrap 选区，失败则用浮动宿主承载选中原文
+ */
+export function collectExactSelectionTargets(): HTMLElement[] {
+  const text = getRememberedSelectionText().trim();
+  if (text.length < 2) return [];
+
+  const sel = window.getSelection();
+  const liveRange =
+    sel && !sel.isCollapsed && sel.rangeCount > 0 ? sel.getRangeAt(0).cloneRange() : null;
+
+  if (liveRange) {
+    const blocks = blocksFromRange(liveRange).filter((el) => el.isConnected);
+    if (blocks.length === 1) {
+      const full = (blocks[0].innerText || '').replace(/\s+/g, ' ').trim();
+      // 几乎整段选中：就地译该块，避免拆碎 DOM
+      if (full === text || (full.includes(text) && text.length >= full.length * 0.85)) {
+        return [blocks[0]];
+      }
+    }
+
+    const wrapped = wrapLooseSelection(liveRange);
+    if (wrapped) return [wrapped];
+  }
+
+  // 弹窗打开导致选区丢失时，用缓存文本建宿主
+  const host = ensureTextSelectionHost(text, liveRange);
+  return [host];
+}
+
 function collectBlocksFromLiveSelection(): HTMLElement[] {
   const sel = window.getSelection();
   if (!sel || sel.isCollapsed || !sel.rangeCount) return [];

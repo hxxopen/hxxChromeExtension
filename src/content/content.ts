@@ -183,6 +183,17 @@ g.__hxxTranslateHandle = (message, sendResponse) => {
     return false;
   }
 
+  // 未识别：明确回包，避免 popup 收到 undefined；通常是页面仍挂着旧 content
+  if (message?.type) {
+    respond({
+      error: t('unknownMessage', { type: String(message.type) }),
+      status: 'idle',
+      index: 0,
+      total: 0,
+    });
+    return false;
+  }
+
   return false;
 };
 

@@ -134,8 +134,10 @@ export default function App() {
     setTtsBusy(true);
     setNotice(null);
     try {
-      const res = await send<TtsStatusPayload>({ type: 'TTS_START_PAGE' });
-      if (res.error) setNotice(res.error);
+      const res = await send<TtsStatusPayload & { error?: string }>({ type: 'TTS_START_PAGE' });
+      if (res?.error) setNotice(res.error);
+    } catch (e) {
+      setNotice((e as Error).message || t('ttsFailed'));
     } finally {
       setTtsBusy(false);
     }
@@ -145,8 +147,10 @@ export default function App() {
     setTtsBusy(true);
     setNotice(null);
     try {
-      const res = await send<TtsStatusPayload>({ type: 'TTS_START_SELECTION' });
-      if (res.error) setNotice(res.error);
+      const res = await send<TtsStatusPayload & { error?: string }>({ type: 'TTS_START_SELECTION' });
+      if (res?.error) setNotice(res.error);
+    } catch (e) {
+      setNotice((e as Error).message || t('ttsFailed'));
     } finally {
       setTtsBusy(false);
     }
