@@ -6,7 +6,7 @@ import type {
   TtsVoiceInfo,
 } from './types';
 
-export type TtsControlAction = 'pause' | 'resume' | 'prev' | 'next' | 'stop';
+export type TtsControlAction = 'pause' | 'resume' | 'prev' | 'next' | 'reset' | 'stop';
 
 export type TtsEventType = 'start' | 'end' | 'word' | 'error' | 'interrupted' | 'cancelled';
 

@@ -24,6 +24,7 @@ import {
   onTtsStatusChange,
   pausePlayback,
   prevSegment,
+  resetPlayback,
   resumePlayback,
   startPageTts,
   startSelectionTts,
@@ -161,6 +162,9 @@ g.__hxxTranslateHandle = (message, sendResponse) => {
           break;
         case 'next':
           respond(await nextSegment());
+          break;
+        case 'reset':
+          respond(await resetPlayback());
           break;
         case 'stop':
           respond(await stopPlayback());

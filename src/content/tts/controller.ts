@@ -3,6 +3,11 @@ import type { RuntimeMessage, TtsStatusPayload, TtsVoicesResponse } from '../../
 import { getSettings, saveSettings } from '../../common/storage';
 import type { TtsEndMode, TtsPlaybackStatus } from '../../common/types';
 import { TTS_RATE_MAX, TTS_RATE_MIN } from '../../common/types';
+import {
+  getRememberedSelectionText,
+  hasLiveMeaningfulSelection,
+  hasMeaningfulSelection,
+} from '../text-node-parser';
 import { clearHighlight, highlightElement } from './highlighter';
 import { ensurePlayer, hidePlayer, updatePlayer } from './player-ui';
 import {
@@ -13,6 +18,7 @@ import {
 } from './segmenter';
 
 type Listener = (status: TtsStatusPayload) => void;
+type SessionKind = 'page' | 'selection';
 
 let segments: TtsDomSegment[] = [];
 let index = 0;
@@ -22,7 +28,7 @@ let rate = 1;
 let voiceName = '';
 let voiceLangByName = new Map<string, string>();
 let highlightOn = true;
-let endMode: TtsEndMode = 'loop';
+let endMode: TtsEndMode = 'stop';
 let rememberSettings = true;
 let error: string | undefined;
 let listener: Listener | null = null;
@@ -31,6 +37,25 @@ let speakSeq = 0;
 let charIndex = 0;
 /** 自然播完后停在播放器上时，下次「继续」需从头开播 */
 let awaitingReplay = false;
+/** 当前会话来源：整页或选区 */
+let sessionKind: SessionKind = 'page';
+/** 选区会话启动时的原文，用于判断用户是否换了选区 */
+let sessionSourceText = '';
+
+function normalizeText(s: string): string {
+  return s.replace(/\s+/g, ' ').trim();
+}
+
+/** 用户是否已换了要读的选区（点「继续/重置」时应改读新内容） */
+function selectionChangedSinceSession(): boolean {
+  const sel = normalizeText(getRememberedSelectionText());
+  if (sel.length < 2) return false;
+  if (sessionKind === 'selection') {
+    return sel !== normalizeText(sessionSourceText);
+  }
+  // 整页朗读：仅当页面上仍有「活」选区时，才视为用户想改读选中内容
+  return hasLiveMeaningfulSelection();
+}
 
 function clampRate(v: number): number {
   return Math.min(TTS_RATE_MAX, Math.max(TTS_RATE_MIN, Number(v.toFixed(2))));
@@ -73,6 +98,7 @@ function syncPlayerUi(): void {
       else void pausePlayback();
     },
     onNext: () => void nextSegment(),
+    onReset: () => void resetPlayback(),
     onStop: () => void stopPlayback(),
     onClose: () => void stopPlayback(),
     onRateChange: (v) => void setRate(v),
@@ -113,7 +139,7 @@ async function loadTtsPrefs(): Promise<void> {
   rate = clampRate(s.ttsRate ?? 1);
   voiceName = s.ttsVoiceName || '';
   highlightOn = s.ttsHighlight !== false;
-  endMode = s.ttsEndMode ?? 'loop';
+  endMode = s.ttsEndMode ?? 'stop';
   rememberSettings = s.ttsRememberVoiceRate !== false;
   try {
     const vr = (await chrome.runtime.sendMessage({ type: 'TTS_GET_VOICES' })) as TtsVoicesResponse;
@@ -187,6 +213,10 @@ async function finishAll(): Promise<void> {
 
 export async function resumePlayback(): Promise<TtsStatusPayload> {
   if (status !== 'paused') return getTtsStatus();
+  // 暂停后换了选区再点「继续」：改读新选区，避免仍继续旧内容
+  if (selectionChangedSinceSession()) {
+    return startSelectionTts();
+  }
   if (awaitingReplay || !requestId) {
     awaitingReplay = false;
     await speakCurrent();
@@ -195,6 +225,23 @@ export async function resumePlayback(): Promise<TtsStatusPayload> {
   await chrome.runtime.sendMessage({ type: 'TTS_RESUME' });
   status = 'playing';
   emit();
+  return getTtsStatus();
+}
+
+/** 重置：有新选区则改读选区，否则从当前列表第一段重新开播 */
+export async function resetPlayback(): Promise<TtsStatusPayload> {
+  if (selectionChangedSinceSession()) {
+    return startSelectionTts();
+  }
+  if (!segments.length) {
+    if (hasMeaningfulSelection()) return startSelectionTts();
+    return getTtsStatus();
+  }
+  await chrome.runtime.sendMessage({ type: 'TTS_STOP' });
+  index = 0;
+  charIndex = 0;
+  awaitingReplay = false;
+  await speakCurrent();
   return getTtsStatus();
 }
 
@@ -220,6 +267,8 @@ export async function startPageTts(): Promise<TtsStatusPayload> {
   await chrome.runtime.sendMessage({ type: 'TTS_STOP' });
   segments = list;
   index = 0;
+  sessionKind = 'page';
+  sessionSourceText = '';
   awaitingReplay = false;
   await speakCurrent();
   return getTtsStatus();
@@ -238,6 +287,8 @@ export async function startSelectionTts(): Promise<TtsStatusPayload> {
   await chrome.runtime.sendMessage({ type: 'TTS_STOP' });
   segments = list;
   index = 0;
+  sessionKind = 'selection';
+  sessionSourceText = getRememberedSelectionText();
   awaitingReplay = false;
   await speakCurrent();
   return getTtsStatus();
@@ -257,6 +308,8 @@ export async function stopPlayback(): Promise<TtsStatusPayload> {
   requestId = '';
   charIndex = 0;
   awaitingReplay = false;
+  sessionKind = 'page';
+  sessionSourceText = '';
   await chrome.runtime.sendMessage({ type: 'TTS_STOP' });
   status = 'idle';
   clearHighlight();

@@ -6,7 +6,11 @@ body {
   margin: 0;
   background: #f8fafc;
   color: #0f172a;
-  font-family: "Segoe UI", system-ui, sans-serif;
+  font-family: "Segoe UI", system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 button,

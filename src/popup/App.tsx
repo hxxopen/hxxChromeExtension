@@ -256,9 +256,6 @@ export default function App() {
           >
             {hasSelection ? t('translateSelection') : t('translateSelectionOrFirst')}
           </button>
-          <p style={{ margin: '6px 0 0', fontSize: 11, color: '#64748b' }}>
-            {hasSelection ? t('selectionHintHas') : t('selectionHintNone')}
-          </p>
 
           <div
             style={{

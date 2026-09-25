@@ -23,7 +23,7 @@ export function normalizeTtsEndMode(
   // 兼容旧勾选：关 = 停住保留播放器；开 = 播完退出
   if (legacyAutoStop === false) return 'stop';
   if (legacyAutoStop === true) return 'exit';
-  return 'loop';
+  return 'stop';
 }
 
 function withNormalizedSettings(settings: ExtensionSettings): ExtensionSettings {

@@ -10,6 +10,7 @@ import {
   nextSegment,
   pausePlayback,
   prevSegment,
+  resetPlayback,
   resumePlayback,
   startPageTts,
   startSelectionTts,
@@ -218,6 +219,7 @@ function buildFab(settings: ExtensionSettings): HTMLElement {
           <button type="button" class="hxx-fab-icon playing" data-hxx-action="tts-pause" title="${t('ttsPause')}">⏸</button>
           <button type="button" class="hxx-fab-icon" data-hxx-action="tts-prev" title="${t('ttsPrev')}">◀</button>
           <button type="button" class="hxx-fab-icon" data-hxx-action="tts-next" title="${t('ttsNext')}">▶</button>
+          <button type="button" class="hxx-fab-icon" data-hxx-action="tts-reset" title="${t('ttsReset')}">↺</button>
           <button type="button" class="hxx-fab-icon" data-hxx-action="tts-stop" title="${t('ttsStop')}">⏹</button>
           <div class="hxx-fab-tts-count">0/0</div>
         </div>
@@ -283,6 +285,10 @@ function buildFab(settings: ExtensionSettings): HTMLElement {
       }
       if (action === 'tts-next') {
         void nextSegment().then((s) => syncFloatingPanelTts(s));
+        return;
+      }
+      if (action === 'tts-reset') {
+        void resetPlayback().then((s) => syncFloatingPanelTts(s));
         return;
       }
       if (action === 'tts-stop') {

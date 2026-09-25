@@ -22,6 +22,7 @@ export type PlayerHandlers = {
   onPrev: () => void;
   onPauseResume: () => void;
   onNext: () => void;
+  onReset: () => void;
   onStop: () => void;
   onClose: () => void;
   onRateChange: (rate: number) => void;
@@ -263,6 +264,7 @@ export function ensurePlayer(h: PlayerHandlers): HTMLElement {
         <button type="button" class="hxx-tts-ctrl" data-hxx-tts="prev">${t('ttsPrev')}</button>
         <button type="button" class="hxx-tts-ctrl primary" data-hxx-tts="pause">${t('ttsPause')}</button>
         <button type="button" class="hxx-tts-ctrl" data-hxx-tts="next">${t('ttsNext')}</button>
+        <button type="button" class="hxx-tts-ctrl" data-hxx-tts="reset">${t('ttsReset')}</button>
       </div>
       <div class="hxx-tts-mode">
         <span data-hxx-tts="endModeLabel">${t('ttsEndMode')}</span>
@@ -298,6 +300,10 @@ function bindEvents(el: HTMLElement): void {
   el.querySelector('[data-hxx-tts="next"]')?.addEventListener('click', (e) => {
     e.stopPropagation();
     handlers?.onNext();
+  });
+  el.querySelector('[data-hxx-tts="reset"]')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    handlers?.onReset();
   });
   el.querySelector('[data-hxx-tts="close"]')?.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -441,6 +447,7 @@ export function updatePlayer(state: PlayerViewState): void {
   const pauseBtn = root.querySelector('[data-hxx-tts="pause"]') as HTMLButtonElement | null;
   const prevBtn = root.querySelector('[data-hxx-tts="prev"]') as HTMLButtonElement | null;
   const nextBtn = root.querySelector('[data-hxx-tts="next"]') as HTMLButtonElement | null;
+  const resetBtn = root.querySelector('[data-hxx-tts="reset"]') as HTMLButtonElement | null;
   const endModeLabel = root.querySelector('[data-hxx-tts="endModeLabel"]');
   const endMode = root.querySelector('[data-hxx-tts="endMode"]') as HTMLSelectElement | null;
   const rate = root.querySelector('[data-hxx-tts="rate"]') as HTMLInputElement | null;
@@ -481,9 +488,13 @@ export function updatePlayer(state: PlayerViewState): void {
     nextBtn.textContent = t('ttsNext');
     nextBtn.disabled = state.index >= state.total - 1 && state.status !== 'paused';
   }
+  if (resetBtn) {
+    resetBtn.textContent = t('ttsReset');
+    resetBtn.disabled = state.total <= 0;
+  }
   if (endModeLabel) endModeLabel.textContent = t('ttsEndMode');
   if (endMode) {
-    const mode = state.endMode || 'loop';
+    const mode = state.endMode || 'stop';
     if (document.activeElement !== endMode) endMode.value = mode;
     const loopOpt = endMode.querySelector('option[value="loop"]');
     const stopOpt = endMode.querySelector('option[value="stop"]');

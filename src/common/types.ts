@@ -140,7 +140,7 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
   ttsRate: 1,
   ttsSplitParagraphs: true,
   ttsHighlight: true,
-  ttsEndMode: 'loop',
+  ttsEndMode: 'stop',
   ttsRememberVoiceRate: true,
 };
 
