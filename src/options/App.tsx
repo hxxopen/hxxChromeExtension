@@ -3,6 +3,7 @@ import type { AccountInfo, DisplayMode, ExtensionSettings, TtsVoiceInfo, UiLangu
 import { OFFICIAL_API_BASE, TARGET_LANGUAGES, TTS_RATE_MAX, TTS_RATE_MIN } from '../common/types';
 import type { TtsVoicesResponse } from '../common/messages';
 import { dateLocale, setUiLanguage, t, UI_LANGUAGES } from '../common/i18n';
+import { getVoicePackHelp, type HelpSection } from './tts-voice-help';
 
 type AuthState = { accessToken: string; userId: string; email: string } | null;
 
@@ -24,6 +25,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [voices, setVoices] = useState<TtsVoiceInfo[]>([]);
   const [ttsHint, setTtsHint] = useState<string | null>(null);
+  const [voiceHelpOpen, setVoiceHelpOpen] = useState(false);
 
   const load = useCallback(async () => {
     const s = await send<ExtensionSettings>({ type: 'GET_SETTINGS' });
@@ -190,8 +192,26 @@ export default function App() {
 
       <section style={card}>
         <h2 style={h2}>{t('ttsSettings')}</h2>
-        <label style={label}>{t('ttsDefaultVoice')}</label>
+        <div style={labelRow}>
+          <label style={{ ...label, marginBottom: 0 }} htmlFor="tts-default-voice">
+            {t('ttsDefaultVoice')}
+          </label>
+          <button
+            type="button"
+            style={helpBtn}
+            aria-expanded={voiceHelpOpen}
+            aria-controls="tts-voice-help"
+            title={t('ttsVoiceHelpButton')}
+            onClick={() => setVoiceHelpOpen((v) => !v)}
+          >
+            ?
+          </button>
+          <button type="button" style={helpLinkBtn} onClick={() => setVoiceHelpOpen((v) => !v)}>
+            {voiceHelpOpen ? t('ttsVoiceHelpClose') : t('ttsVoiceHelpOpen')}
+          </button>
+        </div>
         <select
+          id="tts-default-voice"
           value={settings.ttsVoiceName || ''}
           onChange={(e) => void patch({ ttsVoiceName: e.target.value })}
           style={input}
@@ -206,6 +226,7 @@ export default function App() {
         {!voices.length ? (
           <p style={{ margin: '6px 0 0', fontSize: 12, color: '#b45309' }}>{t('ttsNoVoices')}</p>
         ) : null}
+        {voiceHelpOpen ? <VoicePackHelpPanel lang={locale} /> : null}
 
         <label style={{ ...label, marginTop: 14 }}>
           {t('ttsRate')} · {Number((settings.ttsRate ?? 1).toFixed(2))}x
@@ -326,6 +347,78 @@ export default function App() {
   );
 }
 
+function HelpSectionBlock({ section }: { section: HelpSection }) {
+  return (
+    <div style={{ marginTop: 14 }}>
+      <h4 style={{ margin: '0 0 6px', fontSize: 13, color: '#0f172a' }}>{section.title}</h4>
+      {section.intro ? (
+        <p style={{ margin: '0 0 8px', fontSize: 12, color: '#64748b', lineHeight: 1.55 }}>{section.intro}</p>
+      ) : null}
+      <ol style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#334155', lineHeight: 1.65 }}>
+        {section.steps.map((step) => (
+          <li key={step} style={{ marginBottom: 4 }}>
+            {linkify(step)}
+          </li>
+        ))}
+      </ol>
+      {section.tip ? (
+        <p
+          style={{
+            margin: '8px 0 0',
+            fontSize: 12,
+            color: '#92400e',
+            background: '#fffbeb',
+            border: '1px solid #fde68a',
+            borderRadius: 8,
+            padding: '8px 10px',
+            lineHeight: 1.55,
+          }}
+        >
+          {section.tip}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function linkify(text: string) {
+  const url = 'https://uupdump.net';
+  if (!text.includes(url)) return text;
+  const parts = text.split(url);
+  return (
+    <>
+      {parts[0]}
+      <a href={url} target="_blank" rel="noreferrer" style={{ color: '#1677ff' }}>
+        {url}
+      </a>
+      {parts.slice(1).join(url)}
+    </>
+  );
+}
+
+function VoicePackHelpPanel({ lang }: { lang: UiLanguage }) {
+  const help = getVoicePackHelp(lang);
+  return (
+    <div
+      id="tts-voice-help"
+      style={{
+        marginTop: 12,
+        padding: 12,
+        borderRadius: 10,
+        border: '1px solid #bfdbfe',
+        background: '#f8fbff',
+      }}
+    >
+      <h3 style={{ margin: '0 0 8px', fontSize: 14, color: '#0f172a' }}>{help.title}</h3>
+      <p style={{ margin: 0, fontSize: 12, color: '#475569', lineHeight: 1.55 }}>{help.why}</p>
+      <HelpSectionBlock section={help.online} />
+      <HelpSectionBlock section={help.offline} />
+      <HelpSectionBlock section={help.afterInstall} />
+      <HelpSectionBlock section={help.stillBroken} />
+    </div>
+  );
+}
+
 const card: CSSProperties = {
   background: '#fff',
   border: '1px solid #e2e8f0',
@@ -336,6 +429,33 @@ const card: CSSProperties = {
 
 const h2: CSSProperties = { fontSize: 15, margin: '0 0 12px' };
 const label: CSSProperties = { display: 'block', fontSize: 13, color: '#475569', marginBottom: 6 };
+const labelRow: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  marginBottom: 6,
+};
+const helpBtn: CSSProperties = {
+  width: 22,
+  height: 22,
+  borderRadius: '50%',
+  border: '1px solid #93c5fd',
+  background: '#eff6ff',
+  color: '#1d4ed8',
+  fontSize: 13,
+  fontWeight: 700,
+  lineHeight: '20px',
+  padding: 0,
+  cursor: 'pointer',
+};
+const helpLinkBtn: CSSProperties = {
+  border: 0,
+  background: 'transparent',
+  color: '#1677ff',
+  fontSize: 12,
+  padding: 0,
+  cursor: 'pointer',
+};
 const input: CSSProperties = {
   width: '100%',
   padding: '8px 10px',

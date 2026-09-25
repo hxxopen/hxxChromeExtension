@@ -110,6 +110,9 @@ const en = {
   ttsTestingFailed: 'Speech failed: {error}',
   ttsNoVoices:
     'No English voices found. Install an English voice pack in Windows Settings → Time & language → Speech, then reload this page.',
+  ttsVoiceHelpButton: 'Help: install English voice pack',
+  ttsVoiceHelpOpen: 'Install guide',
+  ttsVoiceHelpClose: 'Hide guide',
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -217,6 +220,9 @@ const zhCN: Record<MessageKey, string> = {
   ttsTestingFailed: '朗读失败：{error}',
   ttsNoVoices:
     '未检测到英文语音。请到 Windows「设置 → 时间和语言 → 语音」安装英文语音包，然后刷新本页。',
+  ttsVoiceHelpButton: '帮助：安装英文语音包',
+  ttsVoiceHelpOpen: '安装说明',
+  ttsVoiceHelpClose: '收起说明',
 };
 
 const catalogs: Record<UiLanguage, Record<MessageKey, string>> = {
